@@ -13,9 +13,10 @@ services:
       - key: CORS_ORIGINS
         value: '["*"]'
 
-  # 2. React Vite GIS Dashboard Frontend
-  - type: static
+  # 2. React Vite GIS Dashboard Frontend Static Site
+  - type: web
     name: flamex-frontend
+    env: static
     region: oregon
     plan: free
     buildCommand: cd frontend && npm install && npm run build
