@@ -1,5 +1,5 @@
 import React from 'react';
-import { Flame, Factory, Database, ShieldAlert, BarChart2, Radio, Sparkles } from 'lucide-react';
+import { Flame, Factory, Database, ShieldAlert, BarChart2, Radio, Sparkles, Globe2, Brain, Wifi } from 'lucide-react';
 import { ActiveTabType } from '../types';
 
 interface SidebarNavProps {
@@ -14,12 +14,15 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
   unacknowledgedAlertCount
 }) => {
   const navItems = [
-    { id: 'command', label: 'Dashboard', icon: Flame, badge: 'GIS' },
-    { id: 'globe3d', label: '3D Globe', icon: Radio, badge: '3D' },
-    { id: 'facility', label: 'Industry', icon: Factory },
-    { id: 'persistent', label: 'Persistent', icon: Database },
-    { id: 'alerts', label: 'Alerts', icon: ShieldAlert, alertBadge: unacknowledgedAlertCount },
-    { id: 'analytics', label: 'Analytics', icon: BarChart2 }
+    { id: 'command',      label: 'Command Center',   icon: Flame,     badge: 'GIS' },
+    { id: 'globe3d',      label: '3D Globe',          icon: Globe2,    badge: '3D' },
+    { id: 'facility',     label: 'Facilities',        icon: Factory },
+    { id: 'persistent',   label: 'Persistent Sources',icon: Database },
+    { id: 'alerts',       label: 'Alert Center',      icon: ShieldAlert, alertBadge: unacknowledgedAlertCount },
+    { id: 'analytics',    label: 'Analytics',         icon: BarChart2 },
+    { id: 'ai-assistant', label: 'AI Assistant',      icon: Sparkles,  badge: 'AI' },
+    { id: 'data-sources', label: 'Data Sources',      icon: Wifi },
+    { id: 'model',        label: 'AI Model',          icon: Brain },
   ];
 
   return (
@@ -37,13 +40,13 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
             <span className="text-base font-extrabold tracking-tight text-white">Flame<span className="text-orange-500">X</span></span>
             <span className="px-1.5 py-0.2 text-[9px] font-bold bg-orange-500/20 text-orange-400 border border-orange-500/30 rounded">COMMAND</span>
           </div>
-          <p className="text-[10px] text-gray-400 truncate">Thermal Intelligence</p>
+          <p className="text-[10px] text-gray-400 truncate">AI Thermal Intelligence</p>
         </div>
       </div>
 
       {/* Navigation Buttons */}
-      <div className="flex-1 py-4 px-2 space-y-1.5">
-        <div className="hidden md:block px-3 pb-2 text-[10px] font-bold uppercase tracking-wider text-gray-500">
+      <div className="flex-1 py-3 px-2 space-y-0.5 overflow-y-auto">
+        <div className="hidden md:block px-3 pb-2 pt-1 text-[10px] font-bold uppercase tracking-wider text-gray-600">
           Command Operations
         </div>
 
@@ -53,8 +56,9 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
           return (
             <button
               key={item.id}
+              id={`nav-${item.id}`}
               onClick={() => onTabChange(item.id as ActiveTabType)}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl font-medium text-xs transition ${
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl font-medium text-xs transition-all ${
                 isActive
                   ? 'bg-gradient-to-r from-orange-600 to-amber-600 text-white font-bold shadow-lg shadow-orange-600/20'
                   : 'text-gray-400 hover:text-gray-200 hover:bg-gray-900'
@@ -87,7 +91,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
           <div className="flex items-center justify-between text-[11px]">
             <span className="text-gray-400 font-medium">FIRMS Satellite</span>
             <span className="flex items-center gap-1 text-emerald-400 font-mono font-bold">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               LIVE
             </span>
           </div>

@@ -1,4 +1,4 @@
-export type ActiveTabType = 'command' | 'globe3d' | 'facility' | 'persistent' | 'alerts' | 'analytics';
+export type ActiveTabType = 'command' | 'globe3d' | 'facility' | 'persistent' | 'alerts' | 'analytics' | 'ai-assistant' | 'data-sources' | 'model';
 
 export interface PersistentSourceItem {
   event_id: number;

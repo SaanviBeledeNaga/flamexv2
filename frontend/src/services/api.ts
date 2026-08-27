@@ -107,3 +107,16 @@ export async function triggerFirmsIngestion(): Promise<any> {
   if (!res.ok) throw new Error('Failed to trigger FIRMS ingestion');
   return res.json();
 }
+
+export async function fetchModelPerformance(): Promise<any> {
+  const res = await fetch(`${API_BASE}/analytics/model-performance`);
+  if (!res.ok) throw new Error('Failed to fetch model performance');
+  return res.json();
+}
+
+export async function fetchTopAbnormalFacilities(): Promise<any[]> {
+  const res = await fetch(`${API_BASE}/analytics/top-abnormal-facilities`);
+  if (!res.ok) throw new Error('Failed to fetch top abnormal facilities');
+  return res.json();
+}
+

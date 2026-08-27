@@ -6,16 +6,19 @@ import { MapView } from './components/MapView';
 import { EventDetailDrawer } from './components/EventDetailDrawer';
 import { AnalyticsPanel } from './components/AnalyticsPanel';
 import { AICopilotBar } from './components/AICopilotBar';
+import { LandingPage } from './components/LandingPage';
 
 const Globe3DView = lazy(() => import('./components/Globe3DView').then(m => ({ default: m.Globe3DView })));
 const FacilityIntelligenceView = lazy(() => import('./components/FacilityIntelligenceView').then(m => ({ default: m.FacilityIntelligenceView })));
 const PersistentSourcesView = lazy(() => import('./components/PersistentSourcesView').then(m => ({ default: m.PersistentSourcesView })));
 const AlertCenterModal = lazy(() => import('./components/AlertCenterModal').then(m => ({ default: m.AlertCenterModal })));
+const DataSourcesView = lazy(() => import('./components/DataSourcesView').then(m => ({ default: m.DataSourcesView })));
+const ModelPerformanceView = lazy(() => import('./components/ModelPerformanceView').then(m => ({ default: m.ModelPerformanceView })));
+const AIAssistantView = lazy(() => import('./components/AIAssistantView').then(m => ({ default: m.AIAssistantView })));
 
 import { ActiveTabType, FilterState, GeoJSONFeatureCollection, Alert, AnalyticsSummary } from './types';
 import { fetchMapEventsGeoJSON, fetchMapFacilitiesGeoJSON, fetchAlerts, acknowledgeAlert, fetchAnalyticsSummary } from './services/api';
 import { BarChart2, ShieldAlert, Sparkles, Flame, Eye } from 'lucide-react';
-
 
 const initialFilters: FilterState = {
   classification: 'all',
@@ -28,6 +31,7 @@ const initialFilters: FilterState = {
 };
 
 export const App: React.FC = () => {
+  const [hasEntered, setHasEntered] = useState<boolean>(true);
   const [activeNavTab, setActiveNavTab] = useState<ActiveTabType>('command');
   const [filters, setFilters] = useState<FilterState>(initialFilters);
   
@@ -82,6 +86,10 @@ export const App: React.FC = () => {
   const totalFilteredEvents = eventsGeoJSON?.features.length || 0;
   const unacknowledgedAlerts = alerts.filter(a => !a.acknowledged);
 
+  if (!hasEntered) {
+    return <LandingPage onEnter={() => setHasEntered(true)} />;
+  }
+
   return (
     <div className="flex h-screen w-screen bg-[#0B0F19] text-gray-100 overflow-hidden font-sans">
       {/* Left Command Center Sidebar Navigation */}
@@ -122,7 +130,7 @@ export const App: React.FC = () => {
               totalFilteredCount={totalFilteredEvents}
             />
 
-            {/* GIS Map Canvas (~65-70% height) */}
+            {/* GIS Map Canvas */}
             <div className="flex-1 h-full relative">
               <MapView
                 eventsGeoJSON={eventsGeoJSON}
@@ -171,7 +179,7 @@ export const App: React.FC = () => {
           </Suspense>
         )}
 
-        {/* PAGE VIEW 2: FACILITY INTELLIGENCE */}
+        {/* PAGE VIEW 3: FACILITY INTELLIGENCE */}
         {activeNavTab === 'facility' && (
           <Suspense fallback={<div className="flex-1 flex items-center justify-center text-gray-400 bg-[#0B0F19]">Loading Facility Intelligence...</div>}>
             <FacilityIntelligenceView onSelectEvent={(id) => {
@@ -181,7 +189,7 @@ export const App: React.FC = () => {
           </Suspense>
         )}
 
-        {/* PAGE VIEW 3: PERSISTENT SOURCES TABLE */}
+        {/* PAGE VIEW 4: PERSISTENT SOURCES TABLE */}
         {activeNavTab === 'persistent' && (
           <Suspense fallback={<div className="flex-1 flex items-center justify-center text-gray-400 bg-[#0B0F19]">Loading Persistent Sources...</div>}>
             <PersistentSourcesView onSelectEvent={(id) => {
@@ -191,7 +199,7 @@ export const App: React.FC = () => {
           </Suspense>
         )}
 
-        {/* PAGE VIEW 4: ANALYTICS DASHBOARD */}
+        {/* PAGE VIEW 5: ANALYTICS DASHBOARD */}
         {activeNavTab === 'analytics' && (
           <div className="flex-1 overflow-y-auto p-6 space-y-6">
             <h2 className="text-xl font-bold text-white flex items-center gap-2">
@@ -200,6 +208,36 @@ export const App: React.FC = () => {
             </h2>
             <AnalyticsPanel />
           </div>
+        )}
+
+        {/* PAGE VIEW 6: AI NATURAL LANGUAGE ASSISTANT */}
+        {activeNavTab === 'ai-assistant' && (
+          <Suspense fallback={<div className="flex-1 flex items-center justify-center text-gray-400 bg-[#0B0F19]">Loading FlameX AI Assistant...</div>}>
+            <AIAssistantView
+              onNavigateToMapWithFilter={(preset) => {
+                handleCopilotPreset(preset);
+                setActiveNavTab('command');
+              }}
+              onSelectEvent={(id) => {
+                setSelectedEventId(id);
+                setActiveNavTab('command');
+              }}
+            />
+          </Suspense>
+        )}
+
+        {/* PAGE VIEW 7: DATA SOURCES PAGE */}
+        {activeNavTab === 'data-sources' && (
+          <Suspense fallback={<div className="flex-1 flex items-center justify-center text-gray-400 bg-[#0B0F19]">Loading Data Sources...</div>}>
+            <DataSourcesView />
+          </Suspense>
+        )}
+
+        {/* PAGE VIEW 8: AI MODEL PERFORMANCE PAGE */}
+        {activeNavTab === 'model' && (
+          <Suspense fallback={<div className="flex-1 flex items-center justify-center text-gray-400 bg-[#0B0F19]">Loading AI Model Performance...</div>}>
+            <ModelPerformanceView />
+          </Suspense>
         )}
 
         {/* Event Detail Inspection Drawer (Right Side) */}
@@ -226,3 +264,4 @@ export const App: React.FC = () => {
     </div>
   );
 };
+

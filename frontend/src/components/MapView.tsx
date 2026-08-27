@@ -12,29 +12,34 @@ interface MapViewProps {
   onSelectEvent: (eventId: number) => void;
 }
 
-// Custom Leaflet DivIcons with Confidence Outer Rings
+// Custom Leaflet DivIcons with Emojis & Confidence Rings
+const getClassificationEmoji = (classification: ClassificationClass) => {
+  switch (classification) {
+    case 'industrial_fire': return '🔥';
+    case 'gas_flare': return '🟠';
+    case 'forest_fire': return '🌳';
+    case 'agricultural_burn': return '🌾';
+    case 'mining_activity': return '⛏️';
+    default: return '❓';
+  }
+};
+
 const createCustomIcon = (classification: ClassificationClass, isSelected: boolean, severity: string, confidence: number) => {
   const cfg = getClassConfig(classification);
   const color = cfg.hex;
+  const emoji = getClassificationEmoji(classification);
   const isHighRisk = severity === 'HIGH';
   const ringSize = Math.max(28, Math.round((confidence / 100) * 44));
-
-  const svgIcon = `
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" fill="${color}">
-      <circle cx="12" cy="12" r="10" fill="${color}" fill-opacity="0.25" stroke="${color}" stroke-width="2"/>
-      <circle cx="12" cy="12" r="5" fill="${color}"/>
-    </svg>
-  `;
 
   return L.divIcon({
     className: 'custom-map-marker',
     html: `
       <div class="relative flex items-center justify-center cursor-pointer transition-transform hover:scale-125 ${isSelected ? 'scale-125 z-50' : ''}">
         <!-- Outer Confidence Ring -->
-        <div className="absolute rounded-full border-2 border-dashed pointer-events-none" style="width: ${ringSize}px; height: ${ringSize}px; border-color: ${color}; opacity: 0.6;"></div>
-        ${isHighRisk ? `<div class="absolute -inset-3 rounded-full pulse-high-risk" style="background-color: ${color}; opacity: 0.35;"></div>` : ''}
-        <div class="w-8 h-8 rounded-full border-2 border-gray-900 flex items-center justify-center shadow-2xl relative z-10" style="background-color: #111827;">
-          ${svgIcon}
+        <div class="absolute rounded-full border-2 border-dashed pointer-events-none" style="width: ${ringSize}px; height: ${ringSize}px; border-color: ${color}; opacity: 0.7;"></div>
+        ${isHighRisk ? `<div class="absolute -inset-3 rounded-full pulse-high-risk animate-ping" style="background-color: ${color}; opacity: 0.4;"></div>` : ''}
+        <div class="w-8 h-8 rounded-full border-2 border-gray-900 flex items-center justify-center shadow-2xl relative z-10 text-sm" style="background-color: #111827;">
+          <span>${emoji}</span>
         </div>
       </div>
     `,
