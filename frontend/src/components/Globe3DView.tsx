@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
-import { OrbitControls } from 'three-stdlib';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GeoJSONFeatureCollection, GeoJSONEventProperties } from '../types';
 import { Globe, RotateCw, ZoomIn, ZoomOut, Compass, Flame, Factory, X, Layers } from 'lucide-react';
 import { getClassConfig } from './ExplainabilityBadge';
@@ -68,19 +68,64 @@ export const Globe3DView: React.FC<Globe3DViewProps> = ({
     const earthRadius = 5;
     const globeGeometry = new THREE.SphereGeometry(earthRadius, 64, 64);
 
-    // Load NASA Blue Marble Satellite Earth Texture
+    // Procedural canvas fallback texture (renders even without network)
+    const canvas = document.createElement('canvas');
+    canvas.width = 1024; canvas.height = 512;
+    const ctx = canvas.getContext('2d')!;
+    const grad = ctx.createLinearGradient(0, 0, 0, 512);
+    grad.addColorStop(0, '#1a4a7a');
+    grad.addColorStop(0.35, '#1e6b3e');
+    grad.addColorStop(0.65, '#2d8a4e');
+    grad.addColorStop(1, '#1a4a7a');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 1024, 512);
+    // Draw simplified continent shapes
+    ctx.fillStyle = '#2d8a4e';
+    // North America
+    ctx.beginPath(); ctx.ellipse(250, 200, 90, 110, -0.3, 0, Math.PI * 2); ctx.fill();
+    // Europe/Africa
+    ctx.beginPath(); ctx.ellipse(520, 220, 55, 80, 0.1, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(510, 340, 60, 90, 0.1, 0, Math.PI * 2); ctx.fill();
+    // Asia
+    ctx.beginPath(); ctx.ellipse(700, 190, 130, 90, 0.2, 0, Math.PI * 2); ctx.fill();
+    // Australia
+    ctx.beginPath(); ctx.ellipse(790, 360, 55, 45, 0, 0, Math.PI * 2); ctx.fill();
+    // South America
+    ctx.beginPath(); ctx.ellipse(310, 360, 50, 85, 0.15, 0, Math.PI * 2); ctx.fill();
+    const proceduralTexture = new THREE.CanvasTexture(canvas);
+
+    // Try to load NASA Blue Marble texture; fall back to procedural canvas
     const textureLoader = new THREE.TextureLoader();
-    const earthSatTexture = textureLoader.load(
-      'https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg',
-      () => renderer.render(scene, camera)
-    );
-    earthSatTexture.colorSpace = THREE.SRGBColorSpace;
+    textureLoader.setCrossOrigin('anonymous');
+    let earthSatTexture: THREE.Texture = proceduralTexture;
 
     const globeMaterial = new THREE.MeshStandardMaterial({
-      map: earthSatTexture,
+      map: proceduralTexture,
       roughness: 0.6,
       metalness: 0.1
     });
+
+    // Attempt to replace with real NASA texture
+    const NASA_URLS = [
+      'https://visibleearth.nasa.gov/img/l/Blue_Marble_Next_Generation+Water+Vapor.jpg',
+      'https://eoimages.gsfc.nasa.gov/images/imagerecords/73000/73726/world.topo.bathy.200401.3x5400x2700.jpg',
+      'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/earth_atmos_4096.jpg'
+    ];
+    const tryLoadTexture = (urls: string[], idx = 0) => {
+      if (idx >= urls.length) return;
+      textureLoader.load(
+        urls[idx],
+        (tex) => {
+          tex.colorSpace = THREE.SRGBColorSpace;
+          earthSatTexture = tex;
+          globeMaterial.map = tex;
+          globeMaterial.needsUpdate = true;
+        },
+        undefined,
+        () => tryLoadTexture(urls, idx + 1)
+      );
+    };
+    tryLoadTexture(NASA_URLS);
 
     const earthMesh = new THREE.Mesh(globeGeometry, globeMaterial);
     scene.add(earthMesh);
