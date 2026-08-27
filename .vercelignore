@@ -1,5 +1,4 @@
-# Exclude frontend assets and heavy node_modules from Python serverless function zip
-frontend/
+# Files ignored by Vercel deployment root
 node_modules/
 .git/
 .github/
