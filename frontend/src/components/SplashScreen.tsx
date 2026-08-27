@@ -1,14 +1,23 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Flame, ArrowRight, Radio, Satellite, ShieldCheck, Sparkles } from 'lucide-react';
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { Flame, ArrowRight, Satellite, RotateCw, Sparkles } from 'lucide-react';
 
 interface SplashScreenProps {
   onEnter: () => void;
 }
 
 export const SplashScreen: React.FC<SplashScreenProps> = ({ onEnter }) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const mountRef = useRef<HTMLDivElement>(null);
   const [isEntering, setIsEntering] = useState(false);
+  const [isRotating, setIsRotating] = useState(true);
+
+  const handleEnter = () => {
+    setIsEntering(true);
+    setTimeout(() => {
+      onEnter();
+    }, 450);
+  };
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -20,242 +29,322 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onEnter }) => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const handleEnter = () => {
-    setIsEntering(true);
-    setTimeout(() => {
-      onEnter();
-    }, 450);
-  };
-
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    const container = mountRef.current;
+    if (!container) return;
+
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+
+    // 1. Scene & Camera Setup
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x020612);
+
+    const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+    // Position camera to view the Earth horizon curve nicely
+    camera.position.set(0, 3.2, 11.5);
+
+    // 2. WebGL Renderer
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+    renderer.setSize(width, height);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.2;
+    container.appendChild(renderer.domElement);
+
+    // 3. Orbit Controls (Interactive dragging & rotation)
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.rotateSpeed = 0.6;
+    controls.zoomSpeed = 0.8;
+    controls.autoRotate = true;
+    controls.autoRotateSpeed = 0.75;
+    controls.minDistance = 6.5;
+    controls.maxDistance = 22;
+    controls.maxPolarAngle = Math.PI * 0.85;
+
+    // 4. Lighting System
+    const ambientLight = new THREE.AmbientLight(0x0b1a30, 1.8);
+    scene.add(ambientLight);
+
+    const sunLight = new THREE.DirectionalLight(0xfffaed, 3.5);
+    sunLight.position.set(12, 6, 10);
+    scene.add(sunLight);
+
+    const blueRimLight = new THREE.DirectionalLight(0x00a2ff, 2.8);
+    blueRimLight.position.set(-12, 8, -8);
+    scene.add(blueRimLight);
+
+    // 5. Starfield Generation
+    const starsGeo = new THREE.BufferGeometry();
+    const starCount = 2000;
+    const starPos = new Float32Array(starCount * 3);
+    const starColors = new Float32Array(starCount * 3);
+
+    for (let i = 0; i < starCount * 3; i += 3) {
+      const r = 80 + Math.random() * 80;
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(Math.random() * 2 - 1);
+
+      starPos[i] = r * Math.sin(phi) * Math.cos(theta);
+      starPos[i + 1] = r * Math.sin(phi) * Math.sin(theta);
+      starPos[i + 2] = r * Math.cos(phi);
+
+      const isWarm = Math.random() > 0.8;
+      starColors[i] = isWarm ? 1.0 : 0.8;
+      starColors[i + 1] = isWarm ? 0.9 : 0.9;
+      starColors[i + 2] = 1.0;
+    }
+
+    starsGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+    starsGeo.setAttribute('color', new THREE.BufferAttribute(starColors, 3));
+
+    const starsMat = new THREE.PointsMaterial({
+      size: 1.2,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.85
+    });
+    const stars = new THREE.Points(starsGeo, starsMat);
+    scene.add(stars);
+
+    // 6. High-Definition Procedural Earth Surface Canvas Texture
+    const earthRadius = 4.6;
+    const canvas = document.createElement('canvas');
+    canvas.width = 2048;
+    canvas.height = 1024;
     const ctx = canvas.getContext('2d')!;
 
-    let width = (canvas.width = window.innerWidth);
-    let height = (canvas.height = window.innerHeight);
+    // Oceans gradient base
+    const oceanGrad = ctx.createLinearGradient(0, 0, 0, 1024);
+    oceanGrad.addColorStop(0, '#06132b');
+    oceanGrad.addColorStop(0.3, '#0b2046');
+    oceanGrad.addColorStop(0.5, '#071836');
+    oceanGrad.addColorStop(0.8, '#0b2046');
+    oceanGrad.addColorStop(1, '#06132b');
+    ctx.fillStyle = oceanGrad;
+    ctx.fillRect(0, 0, 2048, 1024);
 
-    // Stars generation
-    const starsCount = Math.floor((width * height) / 3000);
-    const stars: { x: number; y: number; size: number; alpha: number; speed: number; baseAlpha: number }[] = [];
-    for (let i = 0; i < starsCount; i++) {
-      const baseAlpha = Math.random() * 0.7 + 0.3;
-      stars.push({
-        x: Math.random() * width,
-        y: Math.random() * (height * 0.65), // Stars mostly in top space region
-        size: Math.random() * 1.6 + 0.4,
-        alpha: baseAlpha,
-        baseAlpha: baseAlpha,
-        speed: Math.random() * 0.02 + 0.005
-      });
-    }
+    // Landmasses procedural silhouettes
+    ctx.fillStyle = '#1c4a2a'; // Deep green/forest
+    const continents = [
+      { x: 500, y: 350, r: 240 }, // North America
+      { x: 650, y: 650, r: 190 }, // South America
+      { x: 1050, y: 380, r: 210 }, // Europe
+      { x: 1100, y: 550, r: 250 }, // Africa
+      { x: 1450, y: 340, r: 310 }, // Asia / India / Siberia
+      { x: 1380, y: 460, r: 110 }, // India subcontinent
+      { x: 1650, y: 700, r: 160 }  // Australia
+    ];
 
-    // Thermal Hotspots on Earth
-    const hotspots: { x: number; y: number; size: number; phase: number; speed: number; color: string }[] = [];
-    for (let i = 0; i < 45; i++) {
-      hotspots.push({
-        x: Math.random() * width,
-        y: height * 0.72 + Math.random() * (height * 0.25),
-        size: Math.random() * 3 + 2,
-        phase: Math.random() * Math.PI * 2,
-        speed: Math.random() * 0.04 + 0.02,
-        color: Math.random() > 0.3 ? '#FF5722' : '#FFD600'
-      });
-    }
-
-    // City Light Clusters
-    const cityClusters: { x: number; y: number; radius: number; color: string }[] = [];
-    for (let i = 0; i < 35; i++) {
-      cityClusters.push({
-        x: Math.random() * width,
-        y: height * 0.74 + Math.random() * (height * 0.22),
-        radius: Math.random() * 25 + 10,
-        color: 'rgba(255, 190, 80, 0.18)'
-      });
-    }
-
-    let frameId: number;
-    let t = 0;
-
-    const render = () => {
-      t += 0.02;
-      ctx.clearRect(0, 0, width, height);
-
-      // 1. Deep Space Background Gradient
-      const spaceGrad = ctx.createLinearGradient(0, 0, 0, height);
-      spaceGrad.addColorStop(0, '#030712');
-      spaceGrad.addColorStop(0.5, '#060D1F');
-      spaceGrad.addColorStop(0.7, '#0A1835');
-      spaceGrad.addColorStop(1, '#020617');
-      ctx.fillStyle = spaceGrad;
-      ctx.fillRect(0, 0, width, height);
-
-      // 2. Render Stars with Twinkle
-      stars.forEach((star) => {
-        star.alpha = star.baseAlpha + Math.sin(t * star.speed * 50 + star.x) * 0.25;
-        ctx.fillStyle = `rgba(255, 255, 255, ${Math.max(0.1, Math.min(1, star.alpha))})`;
-        ctx.beginPath();
-        ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
-        ctx.fill();
-      });
-
-      // 3. Earth Curve & Horizon Geometry
-      const earthRadius = width * 1.35;
-      const earthCenterX = width * 0.5;
-      const earthCenterY = height * 0.72 + earthRadius;
-
-      // 4. Atmosphere Outer Blue Glow Arc
-      ctx.save();
+    continents.forEach((c) => {
       ctx.beginPath();
-      ctx.arc(earthCenterX, earthCenterY, earthRadius + 22, 0, Math.PI * 2);
-      ctx.strokeStyle = 'rgba(0, 160, 255, 0.35)';
-      ctx.lineWidth = 32;
-      ctx.filter = 'blur(16px)';
-      ctx.stroke();
-      ctx.restore();
-
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(earthCenterX, earthCenterY, earthRadius + 8, 0, Math.PI * 2);
-      ctx.strokeStyle = 'rgba(120, 220, 255, 0.75)';
-      ctx.lineWidth = 8;
-      ctx.filter = 'blur(6px)';
-      ctx.stroke();
-      ctx.restore();
-
-      // Sharp Horizon Rim Line
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(earthCenterX, earthCenterY, earthRadius + 2, 0, Math.PI * 2);
-      ctx.strokeStyle = '#FFFFFF';
-      ctx.lineWidth = 1.5;
-      ctx.filter = 'blur(1px)';
-      ctx.stroke();
-      ctx.restore();
-
-      // 5. Earth Dark Body (Masked)
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(earthCenterX, earthCenterY, earthRadius, 0, Math.PI * 2);
-      ctx.fillStyle = '#060B14';
+      ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
       ctx.fill();
-      ctx.clip(); // Clip everything inside earth body
 
-      // Earth Body Gradient Texture (Dark blue ocean + continent silhouette)
-      const planetGrad = ctx.createLinearGradient(0, height * 0.65, 0, height);
-      planetGrad.addColorStop(0, '#091224');
-      planetGrad.addColorStop(0.3, '#070E1C');
-      planetGrad.addColorStop(1, '#02050D');
-      ctx.fillStyle = planetGrad;
-      ctx.fillRect(0, height * 0.65, width, height * 0.35);
-
-      // Render City Glow Ambient Blobs
-      cityClusters.forEach((c) => {
-        const radGrad = ctx.createRadialGradient(c.x, c.y, 0, c.x, c.y, c.radius);
-        radGrad.addColorStop(0, 'rgba(255, 185, 70, 0.35)');
-        radGrad.addColorStop(0.5, 'rgba(255, 140, 40, 0.15)');
-        radGrad.addColorStop(1, 'transparent');
-        ctx.fillStyle = radGrad;
+      // Land textures & topography ridges
+      for (let j = 0; j < 12; j++) {
+        ctx.fillStyle = j % 2 === 0 ? '#266138' : '#8c6f3d';
         ctx.beginPath();
-        ctx.arc(c.x, c.y, c.radius, 0, Math.PI * 2);
+        ctx.arc(
+          c.x + (Math.random() - 0.5) * c.r * 1.4,
+          c.y + (Math.random() - 0.5) * c.r * 1.4,
+          c.r * (Math.random() * 0.4 + 0.2),
+          0,
+          Math.PI * 2
+        );
         ctx.fill();
-      });
+      }
+    });
 
-      // Render Pulsing Thermal / Fire Hotspots
-      hotspots.forEach((h) => {
-        const pulse = Math.sin(t * 3 + h.phase);
-        const radius = Math.max(1, h.size + pulse * 1.5);
-        const glowRadius = radius * 4.5;
+    // Night City Lights & Thermal Hotspots (Golden / Orange Sparks)
+    for (let i = 0; i < 400; i++) {
+      const cx = 300 + Math.random() * 1500;
+      const cy = 200 + Math.random() * 600;
+      ctx.fillStyle = Math.random() > 0.4 ? 'rgba(255, 205, 80, 0.85)' : 'rgba(255, 90, 30, 0.95)';
+      ctx.beginPath();
+      ctx.arc(cx, cy, Math.random() * 2.5 + 0.8, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
-        const glowGrad = ctx.createRadialGradient(h.x, h.y, 0, h.x, h.y, glowRadius);
-        glowGrad.addColorStop(0, h.color);
-        glowGrad.addColorStop(0.4, 'rgba(255, 87, 34, 0.5)');
-        glowGrad.addColorStop(1, 'transparent');
+    const earthTexture = new THREE.CanvasTexture(canvas);
+    earthTexture.wrapS = THREE.RepeatWrapping;
+    earthTexture.wrapT = THREE.ClampToEdgeWrapping;
 
-        ctx.fillStyle = glowGrad;
-        ctx.beginPath();
-        ctx.arc(h.x, h.y, glowRadius, 0, Math.PI * 2);
-        ctx.fill();
+    // Earth Sphere Geometry
+    const earthGeo = new THREE.SphereGeometry(earthRadius, 64, 64);
+    const earthMat = new THREE.MeshStandardMaterial({
+      map: earthTexture,
+      roughness: 0.7,
+      metalness: 0.15
+    });
+    const earthMesh = new THREE.Mesh(earthGeo, earthMat);
+    scene.add(earthMesh);
 
-        // Hot White Core
-        ctx.fillStyle = '#FFFFFF';
-        ctx.beginPath();
-        ctx.arc(h.x, h.y, radius * 0.6, 0, Math.PI * 2);
-        ctx.fill();
-      });
+    // 7. Luminous Blue Atmosphere Glow Shell (Fresnel Inverted Shader)
+    const atmosphereGeo = new THREE.SphereGeometry(earthRadius * 1.045, 64, 64);
+    const atmosphereMat = new THREE.ShaderMaterial({
+      vertexShader: `
+        varying vec3 vNormal;
+        void main() {
+          vNormal = normalize(normalMatrix * normal);
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        varying vec3 vNormal;
+        void main() {
+          float intensity = pow(0.68 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 2.8);
+          gl_FragColor = vec4(0.0, 0.75, 1.0, 1.0) * intensity * 1.8;
+        }
+      `,
+      blending: THREE.AdditiveBlending,
+      side: THREE.BackSide,
+      transparent: true
+    });
+    const atmosphereMesh = new THREE.Mesh(atmosphereGeo, atmosphereMat);
+    scene.add(atmosphereMesh);
 
-      ctx.restore(); // Restore clipping
+    // 8. 3D Pulsing Thermal Fire Spikes & Beams
+    const fireGroup = new THREE.Group();
+    const thermalPoints = [
+      { lat: 17.45, lon: 78.52, label: 'XYZ Petrochemical Fire', size: 382 },
+      { lat: 19.07, lon: 72.87, label: 'Mumbai Industrial Area', size: 210 },
+      { lat: 21.17, lon: 72.83, label: 'Surat Petrochemical Flare', size: 160 },
+      { lat: 13.08, lon: 80.27, label: 'Chennai Refinery Anomaly', size: 240 },
+      { lat: 12.97, lon: 77.59, label: 'Bengaluru Zone', size: 95 },
+      { lat: 28.61, lon: 77.20, label: 'Northern Power Complex', size: 310 },
+      { lat: 22.57, lon: 88.36, label: 'Eastern Smelter Hub', size: 280 }
+    ];
 
-      frameId = requestAnimationFrame(render);
+    const latLonToVector3 = (lat: number, lon: number, radius: number) => {
+      const phi = (90 - lat) * (Math.PI / 180);
+      const theta = (lon + 180) * (Math.PI / 180);
+      return new THREE.Vector3(
+        -(radius * Math.sin(phi) * Math.cos(theta)),
+        radius * Math.cos(phi),
+        radius * Math.sin(phi) * Math.sin(theta)
+      );
     };
 
-    render();
+    thermalPoints.forEach((pt) => {
+      const pos = latLonToVector3(pt.lat, pt.lon, earthRadius);
 
+      // Glowing Fire Spike Cylinder
+      const height = 0.4 + (pt.size / 400) * 0.5;
+      const spikeGeo = new THREE.CylinderGeometry(0.02, 0.08, height, 8);
+      spikeGeo.translate(0, height / 2, 0);
+      spikeGeo.rotateX(Math.PI / 2);
+
+      const spikeMat = new THREE.MeshBasicMaterial({
+        color: 0xff3b00,
+        transparent: true,
+        opacity: 0.95
+      });
+      const spike = new THREE.Mesh(spikeGeo, spikeMat);
+      spike.position.copy(pos);
+      spike.lookAt(new THREE.Vector3(0, 0, 0));
+      spike.rotateY(Math.PI);
+      fireGroup.add(spike);
+
+      // Heat Core Sphere
+      const glowGeo = new THREE.SphereGeometry(0.09, 16, 16);
+      const glowMat = new THREE.MeshBasicMaterial({
+        color: 0xffd000
+      });
+      const glowMesh = new THREE.Mesh(glowGeo, glowMat);
+      glowMesh.position.copy(pos.clone().multiplyScalar(1.01));
+      fireGroup.add(glowMesh);
+    });
+
+    earthMesh.add(fireGroup);
+
+    // 9. Animation Loop
+    let animId: number;
+    let clock = new THREE.Clock();
+
+    const animate = () => {
+      const delta = clock.getDelta();
+      controls.update();
+
+      // Earth slow realistic axial rotation
+      if (isRotating) {
+        earthMesh.rotation.y += delta * 0.08;
+      }
+
+      // Starfield subtle shimmer
+      stars.rotation.y -= delta * 0.01;
+
+      renderer.render(scene, camera);
+      animId = requestAnimationFrame(animate);
+    };
+
+    animate();
+
+    // 10. Window Resize Handler
     const handleResize = () => {
-      width = canvas.width = window.innerWidth;
-      height = canvas.height = window.innerHeight;
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
     };
 
     window.addEventListener('resize', handleResize);
-    return () => {
-      cancelAnimationFrame(frameId);
-      window.removeEventListener('resize', handleResize);
-    };
-  }, []);
 
-  const handleMouseMove = (e: React.MouseEvent) => {
-    setMousePos({
-      x: (e.clientX / window.innerWidth - 0.5) * 15,
-      y: (e.clientY / window.innerHeight - 0.5) * 15
-    });
-  };
+    return () => {
+      cancelAnimationFrame(animId);
+      window.removeEventListener('resize', handleResize);
+      renderer.dispose();
+      if (container.contains(renderer.domElement)) {
+        container.removeChild(renderer.domElement);
+      }
+    };
+  }, [isRotating]);
 
   return (
-    <div
-      onMouseMove={handleMouseMove}
-      className={`fixed inset-0 w-screen h-screen bg-[#030712] flex flex-col items-center justify-between text-white select-none overflow-hidden transition-all duration-500 z-50 ${
-        isEntering ? 'opacity-0 scale-105 pointer-events-none' : 'opacity-100 scale-100'
-      }`}
-    >
-      {/* Background Starry Space & Earth Curve Canvas */}
-      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" />
+    <div className={`fixed inset-0 w-screen h-screen bg-[#020612] text-white select-none overflow-hidden transition-all duration-500 z-50 ${
+      isEntering ? 'opacity-0 scale-105 pointer-events-none' : 'opacity-100 scale-100'
+    }`}>
+      {/* 3D Moving Earth Three.js Mount Canvas */}
+      <div ref={mountRef} className="absolute inset-0 w-full h-full cursor-grab active:cursor-grabbing" />
 
-      {/* Top Status Bar (Telemetry Pills) */}
-      <header className="relative z-10 w-full px-8 py-6 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-orange-600 to-amber-400 p-0.5 shadow-lg shadow-orange-500/30 flex items-center justify-center">
-            <div className="w-full h-full bg-[#030712] rounded-[10px] flex items-center justify-center">
+      {/* Top Telemetry Header */}
+      <header className="relative z-20 w-full px-6 py-5 flex items-center justify-between pointer-events-none">
+        <div className="flex items-center gap-3 pointer-events-auto">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-orange-600 via-orange-500 to-amber-400 p-0.5 shadow-lg shadow-orange-500/30 flex items-center justify-center">
+            <div className="w-full h-full bg-[#020612] rounded-[10px] flex items-center justify-center">
               <Flame className="w-4 h-4 text-orange-500 fill-orange-500/40" />
             </div>
           </div>
-          <span className="text-sm font-black tracking-wider text-white">
+          <span className="text-base font-black tracking-tight text-white">
             Flame<span className="text-orange-500">X</span>
           </span>
         </div>
 
-        <div className="hidden sm:flex items-center gap-3">
-          <div className="px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-300 text-[11px] font-mono flex items-center gap-1.5 backdrop-blur-md">
-            <Satellite className="w-3.5 h-3.5 text-blue-400" />
-            <span>NASA FIRMS VIIRS & MODIS</span>
+        <div className="hidden sm:flex items-center gap-3 pointer-events-auto">
+          <div className="px-3.5 py-1 rounded-full bg-[#0B132B]/80 border border-cyan-500/30 text-cyan-300 text-xs font-mono flex items-center gap-2 backdrop-blur-md shadow-lg">
+            <Satellite className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+            <span>NASA FIRMS VIIRS/MODIS Telemetry</span>
           </div>
-          <div className="px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[11px] font-mono flex items-center gap-1.5 backdrop-blur-md">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span>Telemetry Online</span>
-          </div>
+
+          <button
+            onClick={() => setIsRotating(!isRotating)}
+            className="p-1.5 rounded-full bg-[#0B132B]/80 border border-gray-700 text-gray-300 hover:text-white transition"
+            title={isRotating ? 'Pause Earth Rotation' : 'Resume Earth Rotation'}
+          >
+            <RotateCw className={`w-3.5 h-3.5 ${isRotating ? 'text-orange-400' : 'text-gray-500'}`} />
+          </button>
         </div>
       </header>
 
-      {/* Central Content Area (Matches the User Reference Image) */}
-      <main
-        style={{
-          transform: `translate3d(${mousePos.x}px, ${mousePos.y}px, 0)`
-        }}
-        className="relative z-10 flex flex-col items-center text-center px-4 max-w-4xl transition-transform duration-200 ease-out my-auto"
-      >
+      {/* Center Cinematic Overlay (Matching the User Reference Image) */}
+      <main className="absolute inset-0 flex flex-col items-center justify-center text-center px-4 max-w-4xl mx-auto z-20 pointer-events-none">
         {/* Main Headline */}
-        <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-tight font-sans drop-shadow-2xl">
+        <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-tight font-sans drop-shadow-[0_10px_35px_rgba(0,0,0,0.9)]">
           AI-Powered{' '}
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-gray-100 to-gray-300">
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-gray-100 to-gray-200">
             Industrial Fire
           </span>
           <br />
@@ -264,43 +353,45 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onEnter }) => {
           </span>
         </h1>
 
-        {/* Glowing Horizon Divider Line */}
-        <div className="w-48 sm:w-72 h-[1px] bg-gradient-to-r from-transparent via-cyan-400 to-transparent my-4 opacity-75 shadow-lg shadow-cyan-400/50" />
+        {/* Luminous Horizon Accent Line */}
+        <div className="w-56 sm:w-80 h-[1.5px] bg-gradient-to-r from-transparent via-cyan-400 to-transparent my-4 shadow-lg shadow-cyan-400/60" />
 
         {/* Subtitle */}
-        <p className="text-xs sm:text-sm md:text-base text-cyan-100/80 font-medium tracking-wide max-w-2xl drop-shadow-md">
+        <p className="text-xs sm:text-sm md:text-base text-cyan-100/90 font-medium tracking-wide max-w-2xl drop-shadow-[0_4px_12px_rgba(0,0,0,0.8)]">
           Real-time Monitoring Using NASA FIRMS & OSM Data
         </p>
 
-        {/* Sleek "Enter Dashboard" CTA Button */}
-        <div className="mt-8">
+        {/* Interactive "Enter Dashboard" CTA Button */}
+        <div className="mt-8 pointer-events-auto">
           <button
             onClick={handleEnter}
-            className="group relative px-8 py-3.5 rounded-xl bg-[#0F172A]/85 hover:bg-[#1E293B] border border-cyan-400/50 hover:border-cyan-300 text-white font-bold text-sm tracking-wide shadow-2xl shadow-cyan-500/20 hover:shadow-cyan-400/40 transition-all duration-300 hover:scale-105 active:scale-95 backdrop-blur-md flex items-center gap-3 overflow-hidden"
+            className="group relative px-9 py-3.5 rounded-xl bg-[#0B132B]/90 hover:bg-[#121E3F] border border-cyan-400/60 hover:border-cyan-300 text-white font-bold text-sm tracking-wide shadow-[0_0_30px_rgba(0,180,255,0.35)] hover:shadow-[0_0_40px_rgba(0,210,255,0.55)] transition-all duration-300 hover:scale-105 active:scale-95 backdrop-blur-md flex items-center gap-3 overflow-hidden"
           >
-            {/* Shimmer effect */}
-            <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/10 to-transparent pointer-events-none" />
+            {/* Ambient Shimmer Beam */}
+            <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
 
             <span className="relative z-10">Enter Dashboard</span>
             <ArrowRight className="w-4 h-4 text-cyan-400 group-hover:translate-x-1 transition-transform relative z-10" />
           </button>
 
-          <p className="text-[10px] text-gray-400 mt-2 font-mono opacity-60">
-            Press <strong className="text-gray-200">Enter ↵</strong> or click to explore
-          </p>
+          <div className="flex items-center justify-center gap-2 text-[10px] text-gray-400 mt-2.5 font-mono">
+            <span>Drag Earth to rotate 360°</span>
+            <span>•</span>
+            <span>Press <strong className="text-gray-200">Enter ↵</strong></span>
+          </div>
         </div>
       </main>
 
-      {/* Footer Metrics Indicator */}
-      <footer className="relative z-10 w-full px-8 py-6 flex items-center justify-between text-[11px] text-gray-400 font-mono">
+      {/* Bottom Live Metrics Bar */}
+      <footer className="relative z-20 w-full px-8 py-5 flex items-center justify-between text-xs text-gray-400 font-mono pointer-events-none">
         <div className="flex items-center gap-2">
-          <span className="text-cyan-400">●</span>
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
           <span>128 Active Hotspots Monitored</span>
         </div>
 
         <div className="hidden sm:flex items-center gap-4">
-          <span>Model: Hybrid-Classifier v1.0</span>
-          <span>Latency: &lt; 2 min</span>
+          <span>WebGL 3D Earth Engine Active</span>
+          <span>Model: Hybrid v1.0</span>
         </div>
       </footer>
     </div>
