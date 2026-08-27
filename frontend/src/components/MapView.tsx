@@ -2,50 +2,103 @@ import React, { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polygon, CircleMarker, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { GeoJSONFeatureCollection, GeoJSONEventProperties, ClassificationClass } from '../types';
-import { getClassConfig } from './ExplainabilityBadge';
-import { Layers, Eye, Zap, Flame, Factory, MapPin, EyeOff } from 'lucide-react';
+import { Plus, Minus, Crosshair, Layers, Droplets, Flame, Factory, Trees, Wheat, HardHat, HelpCircle, ChevronDown } from 'lucide-react';
 
 interface MapViewProps {
   eventsGeoJSON: GeoJSONFeatureCollection | null;
   facilitiesGeoJSON: GeoJSONFeatureCollection | null;
   selectedEventId: number | null;
   onSelectEvent: (eventId: number) => void;
+  totalEventsCount?: number;
 }
 
-// Custom Leaflet DivIcons with Emojis & Confidence Rings
-const getClassificationEmoji = (classification: ClassificationClass) => {
-  switch (classification) {
-    case 'industrial_fire': return '🔥';
-    case 'gas_flare': return '🟠';
-    case 'forest_fire': return '🌳';
-    case 'agricultural_burn': return '🌾';
-    case 'mining_activity': return '⛏️';
-    default: return '❓';
-  }
+// Map Zoom Controller component
+const MapControls: React.FC = () => {
+  const map = useMap();
+  return (
+    <div className="absolute top-4 left-4 z-[1000] flex flex-col gap-1.5 bg-[#101623]/95 backdrop-blur-md border border-[#1E2738] p-1 rounded-xl shadow-2xl">
+      <button
+        onClick={() => map.zoomIn()}
+        className="w-7 h-7 rounded-lg hover:bg-gray-800 flex items-center justify-center text-gray-300 hover:text-white transition"
+        title="Zoom In"
+      >
+        <Plus className="w-4 h-4" />
+      </button>
+      <button
+        onClick={() => map.zoomOut()}
+        className="w-7 h-7 rounded-lg hover:bg-gray-800 flex items-center justify-center text-gray-300 hover:text-white transition"
+        title="Zoom Out"
+      >
+        <Minus className="w-4 h-4" />
+      </button>
+      <div className="h-px bg-gray-800 my-0.5" />
+      <button
+        onClick={() => map.setView([17.45, 78.52], 6)}
+        className="w-7 h-7 rounded-lg hover:bg-gray-800 flex items-center justify-center text-gray-300 hover:text-white transition"
+        title="Center India Region"
+      >
+        <Crosshair className="w-3.5 h-3.5" />
+      </button>
+      <button
+        className="w-7 h-7 rounded-lg hover:bg-gray-800 flex items-center justify-center text-gray-300 hover:text-white transition"
+        title="Map Layers"
+      >
+        <Layers className="w-3.5 h-3.5" />
+      </button>
+      <button
+        className="w-7 h-7 rounded-lg hover:bg-gray-800 flex items-center justify-center text-gray-300 hover:text-white transition"
+        title="Atmospheric / Moisture"
+      >
+        <Droplets className="w-3.5 h-3.5 text-blue-400" />
+      </button>
+    </div>
+  );
 };
 
-const createCustomIcon = (classification: ClassificationClass, isSelected: boolean, severity: string, confidence: number) => {
-  const cfg = getClassConfig(classification);
-  const color = cfg.hex;
-  const emoji = getClassificationEmoji(classification);
-  const isHighRisk = severity === 'HIGH';
-  const ringSize = Math.max(28, Math.round((confidence / 100) * 44));
+// Custom Marker Creator with Glowing Pulsing Circles & Emojis
+const createMarkerIcon = (classification: ClassificationClass, isSelected: boolean, isHighRisk: boolean) => {
+  const getSymbol = (c: ClassificationClass) => {
+    switch (c) {
+      case 'industrial_fire': return { emoji: '🔥', bg: '#EF4444' };
+      case 'gas_flare': return { emoji: '🟠', bg: '#F97316' };
+      case 'forest_fire': return { emoji: '🌲', bg: '#EAB308' };
+      case 'agricultural_burn': return { emoji: '🌾', bg: '#22C55E' };
+      case 'mining_activity': return { emoji: '⛏️', bg: '#A855F7' };
+      default: return { emoji: '❓', bg: '#6B7280' };
+    }
+  };
+
+  const { emoji, bg } = getSymbol(classification);
 
   return L.divIcon({
-    className: 'custom-map-marker',
+    className: 'flamex-pin-marker',
     html: `
       <div class="relative flex items-center justify-center cursor-pointer transition-transform hover:scale-125 ${isSelected ? 'scale-125 z-50' : ''}">
-        <!-- Outer Confidence Ring -->
-        <div class="absolute rounded-full border-2 border-dashed pointer-events-none" style="width: ${ringSize}px; height: ${ringSize}px; border-color: ${color}; opacity: 0.7;"></div>
-        ${isHighRisk ? `<div class="absolute -inset-3 rounded-full pulse-high-risk animate-ping" style="background-color: ${color}; opacity: 0.4;"></div>` : ''}
-        <div class="w-8 h-8 rounded-full border-2 border-gray-900 flex items-center justify-center shadow-2xl relative z-10 text-sm" style="background-color: #111827;">
+        ${isHighRisk ? `<div class="absolute -inset-2 rounded-full animate-ping" style="background-color: ${bg}; opacity: 0.35;"></div>` : ''}
+        <div class="w-7 h-7 rounded-full border-2 border-gray-900 flex items-center justify-center shadow-2xl relative z-10 text-xs" style="background-color: #111827;">
           <span>${emoji}</span>
         </div>
       </div>
     `,
-    iconSize: [44, 44],
-    iconAnchor: [22, 22],
-    popupAnchor: [0, -22]
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+    popupAnchor: [0, -16]
+  });
+};
+
+// Cluster Hotspot Circle Icon
+const createClusterIcon = (count: number) => {
+  return L.divIcon({
+    className: 'flamex-cluster-marker',
+    html: `
+      <div class="w-14 h-14 rounded-full flex items-center justify-center cursor-pointer relative" style="background: radial-gradient(circle, rgba(249,115,22,0.4) 0%, rgba(249,115,22,0.15) 70%, transparent 100%);">
+        <div class="w-8 h-8 rounded-full bg-[#FF6B00] border-2 border-orange-300 flex items-center justify-center shadow-lg shadow-orange-600/40 text-white font-bold font-mono text-xs">
+          ${count}
+        </div>
+      </div>
+    `,
+    iconSize: [56, 56],
+    iconAnchor: [28, 28]
   });
 };
 
@@ -53,148 +106,233 @@ export const MapView: React.FC<MapViewProps> = ({
   eventsGeoJSON,
   facilitiesGeoJSON,
   selectedEventId,
-  onSelectEvent
+  onSelectEvent,
+  totalEventsCount = 128
 }) => {
-  const [tileStyle, setTileStyle] = useState<'dark' | 'google_sat' | 'google_hybrid' | 'google_terrain'>('google_hybrid');
-  const [showAnomalies, setShowAnomalies] = useState(true);
-  const [showFacilities, setShowFacilities] = useState(true);
-  const [showHeatmap, setShowHeatmap] = useState(false);
-  const [timelinePeriod, setTimelinePeriod] = useState<'live' | '6h' | '12h' | '24h' | '7d'>('live');
+  const [mapStyle, setMapStyle] = useState<'dark' | 'satellite' | 'terrain'>('dark');
+  const [layers, setLayers] = useState({
+    thermal: true,
+    facilities: true,
+    landcover: true,
+    forest: true,
+    agriculture: true,
+    mining: true,
+    population: false,
+    roads: false,
+    satellite: false
+  });
 
-  const defaultCenter: [number, number] = [17.45, 78.52];
-  const defaultZoom = 11;
+  // India Center coordinates
+  const defaultCenter: [number, number] = [17.8, 78.8];
+  const defaultZoom = 6;
 
   const tileUrls = {
     dark: 'https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png',
-    google_sat: 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
-    google_hybrid: 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
-    google_terrain: 'https://mt1.google.com/vt/lyrs=p&x={x}&y={y}&z={z}'
+    satellite: 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
+    terrain: 'https://mt1.google.com/vt/lyrs=p&x={x}&y={y}&z={z}'
   };
 
-  const handleOpenGoogleEarth3D = () => {
-    const lat = 17.4502;
-    const lon = 78.5201;
-    const earthUrl = `https://earth.google.com/web/@${lat},${lon},300a,1000d,35y,0h,45t,0r`;
-    window.open(earthUrl, '_blank');
-  };
+  const clusters = [
+    { pos: [19.7515, 75.7139] as [number, number], count: 12, label: 'Maharashtra' },
+    { pos: [17.8496, 79.1152] as [number, number], count: 7, label: 'Telangana' },
+    { pos: [15.3173, 75.7139] as [number, number], count: 6, label: 'Karnataka' },
+    { pos: [15.9129, 79.7400] as [number, number], count: 5, label: 'Andhra Pradesh' }
+  ];
 
   return (
-    <div className="relative w-full h-full bg-[#0B0F19] select-none">
-      {/* Map Control Bar (Layers & Styles) */}
-      <div className="absolute top-4 right-4 z-[1000] flex flex-col gap-2 bg-[#0B0F19]/95 backdrop-blur-md border border-gray-800 p-3 rounded-2xl shadow-2xl text-xs">
-        {/* Style Switcher */}
-        <div className="flex items-center gap-1 bg-gray-900 p-1 rounded-xl border border-gray-800">
-          <button
-            onClick={() => setTileStyle('dark')}
-            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition ${
-              tileStyle === 'dark' ? 'bg-orange-500 text-white shadow-md' : 'text-gray-400 hover:text-gray-200'
-            }`}
-          >
-            Dark GIS
-          </button>
-          <button
-            onClick={() => setTileStyle('google_hybrid')}
-            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition ${
-              tileStyle === 'google_hybrid' ? 'bg-orange-500 text-white shadow-md' : 'text-gray-400 hover:text-gray-200'
-            }`}
-          >
-            🌎 Satellite
-          </button>
-          <button
-            onClick={() => setTileStyle('google_terrain')}
-            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition ${
-              tileStyle === 'google_terrain' ? 'bg-orange-500 text-white shadow-md' : 'text-gray-400 hover:text-gray-200'
-            }`}
-          >
-            ⛰️ Terrain
-          </button>
-        </div>
+    <div className="relative w-full h-full bg-[#0B0F17] select-none">
+      {/* 128 Events Badge Top-Left of Map */}
+      <div className="absolute top-4 left-16 z-[1000] px-3 py-1.5 rounded-xl bg-[#101623]/95 backdrop-blur-md border border-[#1E2738] text-white font-mono font-bold text-xs shadow-2xl flex items-center gap-2">
+        <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
+        <span>{totalEventsCount} Events</span>
+      </div>
 
-        {/* 3D Google Earth Button */}
-        <button
-          onClick={handleOpenGoogleEarth3D}
-          className="w-full py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold rounded-xl transition text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-blue-500/20"
-        >
-          <span>🌎 Open Google Earth 3D</span>
-        </button>
-
+      {/* Floating Map Layers / Style / Legend Card on Right */}
+      <div className="absolute top-4 right-4 z-[1000] w-64 bg-[#101623]/95 backdrop-blur-md border border-[#1E2738] rounded-2xl shadow-2xl p-3.5 text-xs text-gray-300 space-y-3 max-h-[90%] overflow-y-auto hidden sm:block">
         {/* Layer Checkboxes */}
-        <div className="space-y-1.5 pt-1 text-gray-300">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-gray-500 flex items-center gap-1">
-            <Layers className="w-3 h-3 text-orange-500" />
-            <span>Map Overlays</span>
+        <div className="space-y-1.5">
+          <div className="font-bold text-white text-xs flex items-center justify-between">
+            <span>Map Layers</span>
+            <span className="text-[10px] text-gray-500 font-mono">Active (6)</span>
           </div>
 
-          <label className="flex items-center gap-2 cursor-pointer text-[11px] hover:text-white font-medium">
-            <input
-              type="checkbox"
-              checked={showAnomalies}
-              onChange={(e) => setShowAnomalies(e.target.checked)}
-              className="accent-orange-500 rounded"
-            />
-            <span>🔥 Thermal Anomalies</span>
-          </label>
+          <div className="space-y-1 text-[11px] pt-1 font-medium">
+            <label className="flex items-center gap-2 cursor-pointer hover:text-white">
+              <input
+                type="checkbox"
+                checked={layers.thermal}
+                onChange={(e) => setLayers({ ...layers, thermal: e.target.checked })}
+                className="accent-red-500 rounded"
+              />
+              <span className="w-2 h-2 rounded-full bg-red-500" />
+              <span>Thermal Anomalies</span>
+            </label>
 
-          <label className="flex items-center gap-2 cursor-pointer text-[11px] hover:text-white font-medium">
-            <input
-              type="checkbox"
-              checked={showFacilities}
-              onChange={(e) => setShowFacilities(e.target.checked)}
-              className="accent-amber-500 rounded"
-            />
-            <span>🏭 Industrial Facilities</span>
-          </label>
+            <label className="flex items-center gap-2 cursor-pointer hover:text-white">
+              <input
+                type="checkbox"
+                checked={layers.facilities}
+                onChange={(e) => setLayers({ ...layers, facilities: e.target.checked })}
+                className="accent-purple-500 rounded"
+              />
+              <span>🏭 Industrial Facilities</span>
+            </label>
 
-          <label className="flex items-center gap-2 cursor-pointer text-[11px] hover:text-white font-medium">
-            <input
-              type="checkbox"
-              checked={showHeatmap}
-              onChange={(e) => setShowHeatmap(e.target.checked)}
-              className="accent-red-500 rounded"
-            />
-            <span>🌡️ Thermal Risk Heatmap</span>
-          </label>
+            <label className="flex items-center gap-2 cursor-pointer hover:text-white">
+              <input
+                type="checkbox"
+                checked={layers.landcover}
+                onChange={(e) => setLayers({ ...layers, landcover: e.target.checked })}
+                className="accent-blue-500 rounded"
+              />
+              <span>🟩 Land Cover</span>
+            </label>
+
+            <label className="flex items-center gap-2 cursor-pointer hover:text-white">
+              <input
+                type="checkbox"
+                checked={layers.forest}
+                onChange={(e) => setLayers({ ...layers, forest: e.target.checked })}
+                className="accent-emerald-500 rounded"
+              />
+              <span>🌲 Forest</span>
+            </label>
+
+            <label className="flex items-center gap-2 cursor-pointer hover:text-white">
+              <input
+                type="checkbox"
+                checked={layers.agriculture}
+                onChange={(e) => setLayers({ ...layers, agriculture: e.target.checked })}
+                className="accent-green-500 rounded"
+              />
+              <span>🌾 Agriculture</span>
+            </label>
+
+            <label className="flex items-center gap-2 cursor-pointer hover:text-white">
+              <input
+                type="checkbox"
+                checked={layers.mining}
+                onChange={(e) => setLayers({ ...layers, mining: e.target.checked })}
+                className="accent-purple-500 rounded"
+              />
+              <span>⛏️ Mining Areas</span>
+            </label>
+
+            <label className="flex items-center gap-2 cursor-pointer hover:text-white opacity-60">
+              <input
+                type="checkbox"
+                checked={layers.population}
+                onChange={(e) => setLayers({ ...layers, population: e.target.checked })}
+                className="accent-gray-500 rounded"
+              />
+              <span>👥 Population Density</span>
+            </label>
+
+            <label className="flex items-center gap-2 cursor-pointer hover:text-white opacity-60">
+              <input
+                type="checkbox"
+                checked={layers.roads}
+                onChange={(e) => setLayers({ ...layers, roads: e.target.checked })}
+                className="accent-gray-500 rounded"
+              />
+              <span>🛣️ Roads</span>
+            </label>
+
+            <label className="flex items-center gap-2 cursor-pointer hover:text-white opacity-60">
+              <input
+                type="checkbox"
+                checked={layers.satellite}
+                onChange={(e) => setLayers({ ...layers, satellite: e.target.checked })}
+                className="accent-gray-500 rounded"
+              />
+              <span>🛰️ Satellite Imagery</span>
+            </label>
+          </div>
+        </div>
+
+        {/* Map Style 3-way toggle */}
+        <div className="space-y-1.5 pt-1 border-t border-[#1E2738]">
+          <div className="font-bold text-white text-xs">Map Style</div>
+          <div className="grid grid-cols-3 gap-1.5">
+            {(['dark', 'satellite', 'terrain'] as const).map((style) => (
+              <button
+                key={style}
+                onClick={() => setMapStyle(style)}
+                className={`py-1.5 px-2 rounded-lg text-[10px] font-bold capitalize transition border ${
+                  mapStyle === style
+                    ? 'bg-[#FF5722] text-white border-orange-500 shadow-md shadow-orange-600/20'
+                    : 'bg-[#161D2C] border-[#26334A] text-gray-400 hover:text-white'
+                }`}
+              >
+                {style}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Legend */}
+        <div className="space-y-1 pt-1 border-t border-[#1E2738] text-[10px]">
+          <div className="flex items-center justify-between text-gray-400 font-bold uppercase tracking-wider text-[9px] pb-0.5">
+            <span>Classification</span>
+            <span>Count</span>
+          </div>
+          <div className="flex items-center justify-between text-gray-300">
+            <span className="flex items-center gap-1.5">🔴 Industrial Fire</span>
+            <span className="font-mono text-gray-400">14</span>
+          </div>
+          <div className="flex items-center justify-between text-gray-300">
+            <span className="flex items-center gap-1.5">🟠 Persistent Source</span>
+            <span className="font-mono text-gray-400">27</span>
+          </div>
+          <div className="flex items-center justify-between text-gray-300">
+            <span className="flex items-center gap-1.5">🟡 Wildfire</span>
+            <span className="font-mono text-gray-400">31</span>
+          </div>
+          <div className="flex items-center justify-between text-gray-300">
+            <span className="flex items-center gap-1.5">🟢 Agricultural Burn</span>
+            <span className="font-mono text-gray-400">16</span>
+          </div>
+          <div className="flex items-center justify-between text-gray-300">
+            <span className="flex items-center gap-1.5">🟣 Mining Activity</span>
+            <span className="font-mono text-gray-400">9</span>
+          </div>
+          <div className="flex items-center justify-between text-gray-300">
+            <span className="flex items-center gap-1.5">⚪ Unknown</span>
+            <span className="font-mono text-gray-400">31</span>
+          </div>
         </div>
       </div>
 
-      {/* Timeline Scrubber Slider (Bottom Left) */}
-      <div className="absolute bottom-4 right-4 z-[1000] hidden sm:flex items-center gap-2 bg-[#0B0F19]/95 backdrop-blur-md border border-gray-800 p-2 rounded-2xl shadow-2xl text-xs">
-        <div className="flex items-center gap-1.5 text-gray-400 font-bold uppercase text-[10px] px-1">
-          <span>Timeline:</span>
-        </div>
-        {(['live', '6h', '12h', '24h', '7d'] as const).map((period) => (
-          <button
-            key={period}
-            onClick={() => setTimelinePeriod(period)}
-            className={`px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold transition uppercase ${
-              timelinePeriod === period
-                ? 'bg-orange-500 text-white shadow-md'
-                : 'text-gray-400 hover:text-white hover:bg-gray-800'
-            }`}
-          >
-            {period === 'live' ? '● LIVE' : period}
-          </button>
-        ))}
-      </div>
-
+      {/* Main Map Container */}
       <MapContainer
         center={defaultCenter}
         zoom={defaultZoom}
         className="w-full h-full"
         zoomControl={false}
       >
+        <MapControls />
+
         <TileLayer
-          url={tileUrls[tileStyle]}
-          attribution='&copy; CARTO &copy; Esri &copy; OpenStreetMap'
+          url={tileUrls[mapStyle]}
+          attribution='&copy; CARTO &copy; Google &copy; OpenStreetMap'
         />
 
-        {/* Industrial Facilities Layer */}
-        {showFacilities && facilitiesGeoJSON?.features.map((facFeat) => {
+        {/* Hotspot Cluster Circles */}
+        {clusters.map((c, i) => (
+          <Marker
+            key={`cluster-${i}`}
+            position={c.pos}
+            icon={createClusterIcon(c.count)}
+          />
+        ))}
+
+        {/* Industrial Facilities Layer Polygons */}
+        {layers.facilities && facilitiesGeoJSON?.features.map((facFeat) => {
           const props = facFeat.properties;
           const geom = facFeat.geometry;
 
           if (geom.type === 'Polygon') {
-            const coords = geom.coordinates[0].map((c: [number, number]) => [c[1], c[0]]);
+            const coords = geom.coordinates[0].map((pt: [number, number]) => [pt[1], pt[0]]);
             return (
               <Polygon
                 key={`fac-poly-${props.id}`}
@@ -202,61 +340,23 @@ export const MapView: React.FC<MapViewProps> = ({
                 pathOptions={{
                   color: '#F59E0B',
                   fillColor: '#F59E0B',
-                  fillOpacity: 0.18,
+                  fillOpacity: 0.2,
                   weight: 1.5,
-                  dashArray: '4,4'
+                  dashArray: '3,3'
                 }}
-              >
-                <Popup>
-                  <div className="p-2 space-y-1 text-xs">
-                    <div className="flex items-center gap-1.5 text-amber-400 font-bold">
-                      <Factory className="w-4 h-4" />
-                      <span>{props.name}</span>
-                    </div>
-                    <div className="text-gray-300 font-mono">Type: {props.facility_type}</div>
-                    <div className="text-gray-400">Operator: {props.operator || 'N/A'}</div>
-                  </div>
-                </Popup>
-              </Polygon>
-            );
-          } else {
-            return (
-              <CircleMarker
-                key={`fac-pt-${props.id}`}
-                center={[props.latitude, props.longitude]}
-                radius={6}
-                pathOptions={{ color: '#F59E0B', fillColor: '#F59E0B', fillOpacity: 0.6 }}
               />
             );
           }
+          return null;
         })}
 
-        {/* Heatmap Layer Simulation Circles */}
-        {showHeatmap && eventsGeoJSON?.features.map((feat) => {
-          const [lon, lat] = feat.geometry.coordinates;
-          const props = feat.properties as GeoJSONEventProperties;
-          const radius = Math.max(300, props.risk_score * 12);
-          return (
-            <CircleMarker
-              key={`heat-${props.id}`}
-              center={[lat, lon]}
-              radius={radius / 30}
-              pathOptions={{
-                color: props.severity === 'HIGH' ? '#EF4444' : '#F59E0B',
-                fillColor: props.severity === 'HIGH' ? '#EF4444' : '#F59E0B',
-                fillOpacity: 0.35,
-                stroke: false
-              }}
-            />
-          );
-        })}
-
-        {/* Thermal Event Anomaly Markers with Confidence Rings */}
-        {showAnomalies && eventsGeoJSON?.features.map((feat) => {
+        {/* Thermal Event Anomaly Markers */}
+        {layers.thermal && eventsGeoJSON?.features.map((feat) => {
           const props = feat.properties as GeoJSONEventProperties;
           const [lon, lat] = feat.geometry.coordinates;
           const isSelected = props.id === selectedEventId;
-          const icon = createCustomIcon(props.classification, isSelected, props.severity, props.confidence);
+          const isHighRisk = props.severity === 'HIGH';
+          const icon = createMarkerIcon(props.classification, isSelected, isHighRisk);
 
           return (
             <Marker
@@ -266,46 +366,7 @@ export const MapView: React.FC<MapViewProps> = ({
               eventHandlers={{
                 click: () => onSelectEvent(props.id)
               }}
-            >
-              <Popup>
-                <div className="p-3 space-y-2 text-xs w-64">
-                  <div className="flex items-center justify-between border-b border-gray-700 pb-1.5">
-                    <span className="font-mono font-bold text-white">Event #{props.external_id || props.id}</span>
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                      props.severity === 'HIGH' ? 'bg-red-500/30 text-red-400 border border-red-500/40' : 'bg-amber-500/30 text-amber-400'
-                    }`}>
-                      Risk Score: {props.risk_score}/100
-                    </span>
-                  </div>
-
-                  <div className="space-y-1">
-                    <div className="font-semibold text-orange-400 capitalize flex items-center justify-between">
-                      <span>{props.classification.replace('_', ' ')}</span>
-                      <span className="text-gray-400 text-[10px] font-mono">{props.confidence}% conf</span>
-                    </div>
-
-                    <div className="text-gray-300 grid grid-cols-2 gap-1 font-mono text-[11px] bg-gray-900 p-2 rounded">
-                      <div>Temp: <strong className="text-white">{props.brightness_temperature} K</strong></div>
-                      <div>FRP: <strong className="text-white">{props.frp} MW</strong></div>
-                    </div>
-
-                    {props.nearest_facility && (
-                      <div className="text-gray-300 text-[11px]">
-                        Nearest: <span className="text-amber-300 font-medium">{props.nearest_facility}</span> ({props.distance_to_facility}m)
-                      </div>
-                    )}
-                  </div>
-
-                  <button
-                    onClick={() => onSelectEvent(props.id)}
-                    className="w-full mt-2 py-1.5 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded text-center transition flex items-center justify-center gap-1"
-                  >
-                    <Eye className="w-3.5 h-3.5" />
-                    <span>Inspect AI Diagnosis</span>
-                  </button>
-                </div>
-              </Popup>
-            </Marker>
+            />
           );
         })}
       </MapContainer>

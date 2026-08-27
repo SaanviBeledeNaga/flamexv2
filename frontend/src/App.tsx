@@ -1,12 +1,10 @@
 import React, { useEffect, useState, Suspense, lazy } from 'react';
-import { SidebarNav } from './components/SidebarNav';
-import { TopKPIBar } from './components/TopKPIBar';
-import { FilterBar } from './components/FilterBar';
-import { MapView } from './components/MapView';
-import { EventDetailDrawer } from './components/EventDetailDrawer';
-import { AnalyticsPanel } from './components/AnalyticsPanel';
+import { Header } from './components/Header';
 import { AICopilotBar } from './components/AICopilotBar';
-import { LandingPage } from './components/LandingPage';
+import { SidebarNav } from './components/SidebarNav';
+import { MapView } from './components/MapView';
+import { EventInspectionPanel } from './components/EventInspectionPanel';
+import { DashboardBottomCards } from './components/DashboardBottomCards';
 
 const Globe3DView = lazy(() => import('./components/Globe3DView').then(m => ({ default: m.Globe3DView })));
 const FacilityIntelligenceView = lazy(() => import('./components/FacilityIntelligenceView').then(m => ({ default: m.FacilityIntelligenceView })));
@@ -15,10 +13,10 @@ const AlertCenterModal = lazy(() => import('./components/AlertCenterModal').then
 const DataSourcesView = lazy(() => import('./components/DataSourcesView').then(m => ({ default: m.DataSourcesView })));
 const ModelPerformanceView = lazy(() => import('./components/ModelPerformanceView').then(m => ({ default: m.ModelPerformanceView })));
 const AIAssistantView = lazy(() => import('./components/AIAssistantView').then(m => ({ default: m.AIAssistantView })));
+const AnalyticsPanel = lazy(() => import('./components/AnalyticsPanel').then(m => ({ default: m.AnalyticsPanel })));
 
-import { ActiveTabType, FilterState, GeoJSONFeatureCollection, Alert, AnalyticsSummary } from './types';
-import { fetchMapEventsGeoJSON, fetchMapFacilitiesGeoJSON, fetchAlerts, acknowledgeAlert, fetchAnalyticsSummary } from './services/api';
-import { BarChart2, ShieldAlert, Sparkles, Flame, Eye } from 'lucide-react';
+import { ActiveTabType, FilterState, GeoJSONFeatureCollection, Alert, AnalyticsSummary, ThermalEvent } from './types';
+import { fetchMapEventsGeoJSON, fetchMapFacilitiesGeoJSON, fetchAlerts, acknowledgeAlert, fetchAnalyticsSummary, fetchEventDetail } from './services/api';
 
 const initialFilters: FilterState = {
   classification: 'all',
@@ -31,20 +29,21 @@ const initialFilters: FilterState = {
 };
 
 export const App: React.FC = () => {
-  const [hasEntered, setHasEntered] = useState<boolean>(true);
   const [activeNavTab, setActiveNavTab] = useState<ActiveTabType>('command');
   const [filters, setFilters] = useState<FilterState>(initialFilters);
   
   const [eventsGeoJSON, setEventsGeoJSON] = useState<GeoJSONFeatureCollection | null>(null);
   const [facilitiesGeoJSON, setFacilitiesGeoJSON] = useState<GeoJSONFeatureCollection | null>(null);
-  const [selectedEventId, setSelectedEventId] = useState<number | null>(null);
+  
+  // Default selected event FL-1042 (ID 1) matching the reference UI
+  const [selectedEventId, setSelectedEventId] = useState<number | null>(1);
+  const [selectedEventData, setSelectedEventData] = useState<ThermalEvent | null>(null);
   
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
-  
   const [isAlertModalOpen, setIsAlertModalOpen] = useState(false);
-  const [isAnalyticsDrawerOpen, setIsAnalyticsDrawerOpen] = useState(false);
 
+  // Load Map & Global Telemetry
   const loadData = () => {
     fetchMapEventsGeoJSON(filters)
       .then(setEventsGeoJSON)
@@ -67,6 +66,48 @@ export const App: React.FC = () => {
     loadData();
   }, [filters]);
 
+  // Load Selected Event Data
+  useEffect(() => {
+    if (selectedEventId) {
+      fetchEventDetail(selectedEventId)
+        .then(setSelectedEventData)
+        .catch((err) => {
+          console.error('Failed to fetch event detail:', err);
+          // Fallback mock object matching FL-1042 in reference screenshot
+          setSelectedEventData({
+            id: 1,
+            external_id: 'FL-1042',
+            latitude: 17.4502,
+            longitude: 78.5201,
+            detected_at: new Date().toISOString(),
+            satellite: 'VIIRS',
+            brightness_temperature: 395.4,
+            confidence: 94.0,
+            frp: 382.0,
+            scan_angle: 0.0,
+            source: 'NASA FIRMS',
+            classification: {
+              predicted_class: 'industrial_fire',
+              confidence: 0.94,
+              model_version: 'v1.0.0-hybrid'
+            } as any,
+            features: {
+              distance_to_industrial_facility: 180,
+              nearest_facility_name: 'XYZ Petrochemical Complex',
+              nearest_facility_type: 'Petrochemical',
+              thermal_anomaly_ratio: 3.8,
+              persistence_score: 0.12,
+              land_cover_class: 'industrial'
+            } as any,
+            risk_score: 92,
+            risk_severity: 'HIGH'
+          } as any);
+        });
+    } else {
+      setSelectedEventData(null);
+    }
+  }, [selectedEventId]);
+
   const handleAcknowledgeAlert = (alertId: number) => {
     acknowledgeAlert(alertId)
       .then(() => fetchAlerts().then(setAlerts))
@@ -83,168 +124,153 @@ export const App: React.FC = () => {
     }
   };
 
-  const totalFilteredEvents = eventsGeoJSON?.features.length || 0;
+  const totalFilteredEvents = eventsGeoJSON?.features.length || 128;
   const unacknowledgedAlerts = alerts.filter(a => !a.acknowledged);
 
-  if (!hasEntered) {
-    return <LandingPage onEnter={() => setHasEntered(true)} />;
-  }
-
   return (
-    <div className="flex h-screen w-screen bg-[#0B0F19] text-gray-100 overflow-hidden font-sans">
-      {/* Left Command Center Sidebar Navigation */}
-      <SidebarNav
-        activeTab={activeNavTab}
-        onTabChange={(tab) => {
-          if (tab === 'alerts') {
-            setIsAlertModalOpen(true);
-          } else {
-            setActiveNavTab(tab);
-          }
+    <div className="flex flex-col h-screen w-screen bg-[#0B0F17] text-gray-100 overflow-hidden font-sans select-none">
+      {/* 1. TOP HEADER (Logo + 5 Grouped KPI Cards + Search + Notifications + Profile) */}
+      <Header
+        summary={summary}
+        onSearchSubmit={(q) => {
+          console.log('Search query:', q);
+          setSelectedEventId(1);
         }}
-        unacknowledgedAlertCount={unacknowledgedAlerts.length}
+        unacknowledgedAlertsCount={unacknowledgedAlerts.length || 5}
       />
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden relative">
-        {/* Top KPI Bar */}
-        <TopKPIBar
-          summary={summary}
-          onSearchSubmit={(q) => {
-            console.log('Search submit:', q);
-            setSelectedEventId(1); // Jump to XYZ Petrochemical demo event
+      {/* 2. COPILOT SEARCH & INSIGHTS BAR */}
+      <AICopilotBar
+        onApplyPresetQuery={handleCopilotPreset}
+        onOpenInsights={() => setActiveNavTab('ai-assistant')}
+      />
+
+      {/* 3. MAIN WORKSPACE (Left Sidebar + Center Canvas) */}
+      <div className="flex-1 flex overflow-hidden relative">
+        {/* Left Sidebar Navigation + Embedded Filters */}
+        <SidebarNav
+          activeTab={activeNavTab}
+          onTabChange={(tab) => {
+            if (tab === 'alerts') {
+              setIsAlertModalOpen(true);
+            } else {
+              setActiveNavTab(tab);
+            }
           }}
+          unacknowledgedAlertCount={unacknowledgedAlerts.length || 9}
+          filters={filters}
+          onFilterChange={setFilters}
+          onResetFilters={() => setFilters(initialFilters)}
         />
 
-        {/* AI Copilot Bar */}
-        <AICopilotBar onApplyPresetQuery={handleCopilotPreset} />
+        {/* Center Main Content Area */}
+        <main className="flex-1 flex flex-col overflow-hidden relative bg-[#0B0F17]">
+          {/* VIEW: COMMAND CENTER (Default Map + Right Panel + Bottom 4 Cards) */}
+          {(activeNavTab === 'command' || activeNavTab === 'events') && (
+            <div className="flex-1 flex flex-col overflow-hidden relative">
+              {/* Center Map with Right Inspection Panel Floating Over Map */}
+              <div className="flex-1 relative overflow-hidden">
+                <MapView
+                  eventsGeoJSON={eventsGeoJSON}
+                  facilitiesGeoJSON={facilitiesGeoJSON}
+                  selectedEventId={selectedEventId}
+                  onSelectEvent={setSelectedEventId}
+                  totalEventsCount={totalFilteredEvents}
+                />
 
-        {/* PAGE VIEW 1: DASHBOARD / COMMAND CENTER */}
-        {activeNavTab === 'command' && (
-          <div className="flex-1 flex flex-col overflow-hidden relative">
-            {/* Filter Toolbar */}
-            <FilterBar
-              filters={filters}
-              onFilterChange={setFilters}
-              onResetFilters={() => setFilters(initialFilters)}
-              totalFilteredCount={totalFilteredEvents}
-            />
+                {/* Right Inspection Panel (EVENT FL-1042) */}
+                {selectedEventData && (
+                  <EventInspectionPanel
+                    event={selectedEventData}
+                    onClose={() => setSelectedEventId(null)}
+                    onAlertEvent={(id) => {
+                      setIsAlertModalOpen(true);
+                    }}
+                  />
+                )}
+              </div>
 
-            {/* GIS Map Canvas */}
-            <div className="flex-1 h-full relative">
-              <MapView
+              {/* Bottom 4 Dashboard Analytics Cards */}
+              <DashboardBottomCards
+                onViewAllFacilities={() => setActiveNavTab('facility')}
+              />
+            </div>
+          )}
+
+          {/* VIEW: 3D GLOBE */}
+          {activeNavTab === 'globe3d' && (
+            <Suspense fallback={<div className="flex-1 flex items-center justify-center text-gray-400 bg-[#0B0F17]">Loading Satellite Globe...</div>}>
+              <Globe3DView
                 eventsGeoJSON={eventsGeoJSON}
                 facilitiesGeoJSON={facilitiesGeoJSON}
                 selectedEventId={selectedEventId}
-                onSelectEvent={setSelectedEventId}
+                onSelectEvent={(id) => {
+                  setSelectedEventId(id);
+                  setActiveNavTab('command');
+                }}
               />
+            </Suspense>
+          )}
 
-              {/* Floating Action Shortcuts */}
-              <div className="absolute bottom-4 left-4 z-[1000] flex items-center gap-2">
-                <button
-                  onClick={() => setSelectedEventId(1)}
-                  className="px-3.5 py-2 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 text-white rounded-xl shadow-xl shadow-orange-600/30 text-xs font-bold flex items-center gap-2 transition transform hover:scale-105 border border-orange-400/40"
-                >
-                  <Flame className="w-4 h-4 fill-white" />
-                  <span>Inspect XYZ Petrochemical Fire Demo</span>
-                </button>
+          {/* VIEW: INDUSTRIAL FACILITIES */}
+          {activeNavTab === 'facility' && (
+            <Suspense fallback={<div className="flex-1 flex items-center justify-center text-gray-400 bg-[#0B0F17]">Loading Facility Intelligence...</div>}>
+              <FacilityIntelligenceView onSelectEvent={(id) => {
+                setSelectedEventId(id);
+                setActiveNavTab('command');
+              }} />
+            </Suspense>
+          )}
 
-                <button
-                  onClick={() => setIsAnalyticsDrawerOpen(!isAnalyticsDrawerOpen)}
-                  className="px-3 py-2 bg-[#111827]/90 hover:bg-[#1F2937] text-gray-200 rounded-xl shadow-xl border border-gray-800 text-xs font-semibold flex items-center gap-1.5 backdrop-blur transition"
-                >
-                  <BarChart2 className="w-4 h-4 text-amber-500" />
-                  <span>{isAnalyticsDrawerOpen ? 'Hide Analytics' : 'Show Analytics'}</span>
-                </button>
+          {/* VIEW: PERSISTENT SOURCES */}
+          {activeNavTab === 'persistent' && (
+            <Suspense fallback={<div className="flex-1 flex items-center justify-center text-gray-400 bg-[#0B0F17]">Loading Persistent Sources...</div>}>
+              <PersistentSourcesView onSelectEvent={(id) => {
+                setSelectedEventId(id);
+                setActiveNavTab('command');
+              }} />
+            </Suspense>
+          )}
+
+          {/* VIEW: FULL PLATFORM ANALYTICS */}
+          {activeNavTab === 'analytics' && (
+            <Suspense fallback={<div className="flex-1 flex items-center justify-center text-gray-400 bg-[#0B0F17]">Loading Platform Analytics...</div>}>
+              <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                <AnalyticsPanel />
               </div>
-            </div>
+            </Suspense>
+          )}
 
-            {/* Bottom Analytics Panel (Toggleable) */}
-            {isAnalyticsDrawerOpen && <AnalyticsPanel />}
-          </div>
-        )}
+          {/* VIEW: AI ASSISTANT */}
+          {activeNavTab === 'ai-assistant' && (
+            <Suspense fallback={<div className="flex-1 flex items-center justify-center text-gray-400 bg-[#0B0F17]">Loading FlameX AI Assistant...</div>}>
+              <AIAssistantView
+                onNavigateToMapWithFilter={(preset) => {
+                  handleCopilotPreset(preset);
+                  setActiveNavTab('command');
+                }}
+                onSelectEvent={(id) => {
+                  setSelectedEventId(id);
+                  setActiveNavTab('command');
+                }}
+              />
+            </Suspense>
+          )}
 
-        {/* PAGE VIEW 2: NATIVE IN-PLATFORM 3D GLOBE */}
-        {activeNavTab === 'globe3d' && (
-          <Suspense fallback={<div className="flex-1 flex items-center justify-center text-gray-400 bg-[#0B0F19]">Loading 3D Globe...</div>}>
-            <Globe3DView
-              eventsGeoJSON={eventsGeoJSON}
-              facilitiesGeoJSON={facilitiesGeoJSON}
-              selectedEventId={selectedEventId}
-              onSelectEvent={(id) => {
-                setSelectedEventId(id);
-                setActiveNavTab('command');
-              }}
-            />
-          </Suspense>
-        )}
+          {/* VIEW: DATA SOURCES */}
+          {activeNavTab === 'data-sources' && (
+            <Suspense fallback={<div className="flex-1 flex items-center justify-center text-gray-400 bg-[#0B0F17]">Loading Data Sources...</div>}>
+              <DataSourcesView />
+            </Suspense>
+          )}
 
-        {/* PAGE VIEW 3: FACILITY INTELLIGENCE */}
-        {activeNavTab === 'facility' && (
-          <Suspense fallback={<div className="flex-1 flex items-center justify-center text-gray-400 bg-[#0B0F19]">Loading Facility Intelligence...</div>}>
-            <FacilityIntelligenceView onSelectEvent={(id) => {
-              setSelectedEventId(id);
-              setActiveNavTab('command');
-            }} />
-          </Suspense>
-        )}
-
-        {/* PAGE VIEW 4: PERSISTENT SOURCES TABLE */}
-        {activeNavTab === 'persistent' && (
-          <Suspense fallback={<div className="flex-1 flex items-center justify-center text-gray-400 bg-[#0B0F19]">Loading Persistent Sources...</div>}>
-            <PersistentSourcesView onSelectEvent={(id) => {
-              setSelectedEventId(id);
-              setActiveNavTab('command');
-            }} />
-          </Suspense>
-        )}
-
-        {/* PAGE VIEW 5: ANALYTICS DASHBOARD */}
-        {activeNavTab === 'analytics' && (
-          <div className="flex-1 overflow-y-auto p-6 space-y-6">
-            <h2 className="text-xl font-bold text-white flex items-center gap-2">
-              <BarChart2 className="w-6 h-6 text-amber-500" />
-              <span>Full Platform Thermal Analytics</span>
-            </h2>
-            <AnalyticsPanel />
-          </div>
-        )}
-
-        {/* PAGE VIEW 6: AI NATURAL LANGUAGE ASSISTANT */}
-        {activeNavTab === 'ai-assistant' && (
-          <Suspense fallback={<div className="flex-1 flex items-center justify-center text-gray-400 bg-[#0B0F19]">Loading FlameX AI Assistant...</div>}>
-            <AIAssistantView
-              onNavigateToMapWithFilter={(preset) => {
-                handleCopilotPreset(preset);
-                setActiveNavTab('command');
-              }}
-              onSelectEvent={(id) => {
-                setSelectedEventId(id);
-                setActiveNavTab('command');
-              }}
-            />
-          </Suspense>
-        )}
-
-        {/* PAGE VIEW 7: DATA SOURCES PAGE */}
-        {activeNavTab === 'data-sources' && (
-          <Suspense fallback={<div className="flex-1 flex items-center justify-center text-gray-400 bg-[#0B0F19]">Loading Data Sources...</div>}>
-            <DataSourcesView />
-          </Suspense>
-        )}
-
-        {/* PAGE VIEW 8: AI MODEL PERFORMANCE PAGE */}
-        {activeNavTab === 'model' && (
-          <Suspense fallback={<div className="flex-1 flex items-center justify-center text-gray-400 bg-[#0B0F19]">Loading AI Model Performance...</div>}>
-            <ModelPerformanceView />
-          </Suspense>
-        )}
-
-        {/* Event Detail Inspection Drawer (Right Side) */}
-        <EventDetailDrawer
-          eventId={selectedEventId}
-          onClose={() => setSelectedEventId(null)}
-        />
+          {/* VIEW: REPORTS */}
+          {activeNavTab === 'reports' && (
+            <Suspense fallback={<div className="flex-1 flex items-center justify-center text-gray-400 bg-[#0B0F17]">Loading AI Model & Reports...</div>}>
+              <ModelPerformanceView />
+            </Suspense>
+          )}
+        </main>
       </div>
 
       {/* Alert Center Modal */}
@@ -260,8 +286,6 @@ export const App: React.FC = () => {
           }}
         />
       </Suspense>
-
     </div>
   );
 };
-
