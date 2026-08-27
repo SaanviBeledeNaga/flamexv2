@@ -6,12 +6,14 @@ interface HeaderProps {
   summary: AnalyticsSummary | null;
   onSearchSubmit?: (query: string) => void;
   unacknowledgedAlertsCount?: number;
+  onOpenSplash?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   summary,
   onSearchSubmit,
-  unacknowledgedAlertsCount = 5
+  unacknowledgedAlertsCount = 5,
+  onOpenSplash
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -25,7 +27,11 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header className="h-16 bg-[#0B0F17] border-b border-[#1E2738] px-5 flex items-center justify-between gap-4 shrink-0 z-30 select-none">
       {/* Brand Logo */}
-      <div className="flex items-center gap-3 shrink-0">
+      <button
+        onClick={onOpenSplash}
+        className="flex items-center gap-3 shrink-0 hover:opacity-90 transition text-left"
+        title="View Interactive Splash Screen"
+      >
         <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-orange-600 via-orange-500 to-amber-400 p-0.5 shadow-lg shadow-orange-500/20 flex items-center justify-center">
           <div className="w-full h-full bg-[#0B0F17] rounded-[10px] flex items-center justify-center">
             <Flame className="w-5 h-5 text-orange-500 fill-orange-500/30" />
@@ -37,7 +43,7 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
           <p className="text-[10px] text-gray-400 tracking-tight font-medium mt-0.5">AI Thermal Intelligence</p>
         </div>
-      </div>
+      </button>
 
       {/* KPI Cards Strip (Center-Right Grouped) */}
       <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-[#111724]/90 border border-[#1E2738]">

@@ -5,6 +5,7 @@ import { SidebarNav } from './components/SidebarNav';
 import { MapView } from './components/MapView';
 import { EventInspectionPanel } from './components/EventInspectionPanel';
 import { DashboardBottomCards } from './components/DashboardBottomCards';
+import { SplashScreen } from './components/SplashScreen';
 
 const Globe3DView = lazy(() => import('./components/Globe3DView').then(m => ({ default: m.Globe3DView })));
 const FacilityIntelligenceView = lazy(() => import('./components/FacilityIntelligenceView').then(m => ({ default: m.FacilityIntelligenceView })));
@@ -29,6 +30,7 @@ const initialFilters: FilterState = {
 };
 
 export const App: React.FC = () => {
+  const [showSplash, setShowSplash] = useState<boolean>(true);
   const [activeNavTab, setActiveNavTab] = useState<ActiveTabType>('command');
   const [filters, setFilters] = useState<FilterState>(initialFilters);
   
@@ -127,6 +129,10 @@ export const App: React.FC = () => {
   const totalFilteredEvents = eventsGeoJSON?.features.length || 128;
   const unacknowledgedAlerts = alerts.filter(a => !a.acknowledged);
 
+  if (showSplash) {
+    return <SplashScreen onEnter={() => setShowSplash(false)} />;
+  }
+
   return (
     <div className="flex flex-col h-screen w-screen bg-[#0B0F17] text-gray-100 overflow-hidden font-sans select-none">
       {/* 1. TOP HEADER (Logo + 5 Grouped KPI Cards + Search + Notifications + Profile) */}
@@ -137,6 +143,7 @@ export const App: React.FC = () => {
           setSelectedEventId(1);
         }}
         unacknowledgedAlertsCount={unacknowledgedAlerts.length || 5}
+        onOpenSplash={() => setShowSplash(true)}
       />
 
       {/* 2. COPILOT SEARCH & INSIGHTS BAR */}
