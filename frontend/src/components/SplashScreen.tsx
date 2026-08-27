@@ -11,8 +11,8 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onEnter }) => {
   const [mouseOffset, setMouseOffset] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
-    // Smooth fade-in on mount
-    const timer = setTimeout(() => setIsLoaded(true), 80);
+    // Smooth fade-in transition on mount
+    const timer = setTimeout(() => setIsLoaded(true), 60);
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Enter' || e.key === ' ') {
@@ -28,9 +28,9 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onEnter }) => {
   }, []);
 
   const handleMouseMove = (e: React.MouseEvent) => {
-    // Subtle, faint parallax offset (stars shift slightly, Earth remains grounded)
-    const x = (e.clientX / window.innerWidth - 0.5) * 16;
-    const y = (e.clientY / window.innerHeight - 0.5) * 12;
+    // Subtle mouse parallax depth
+    const x = (e.clientX / window.innerWidth - 0.5) * 14;
+    const y = (e.clientY / window.innerHeight - 0.5) * 10;
     setMouseOffset({ x, y });
   };
 
@@ -48,33 +48,32 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onEnter }) => {
         isEntering ? 'opacity-0 scale-105 pointer-events-none' : 'opacity-100 scale-100'
       }`}
     >
-      {/* 1. BACKGROUND: HD Static Cinematic Earth from Space at Night */}
+      {/* 1. BACKGROUND: HD Earth From Space with Subtle Cinematic Drift & Pan */}
       <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none">
-        {/* Deep starry space base layer */}
+        {/* Starry Space Base Layer */}
+        <div className="absolute -inset-10 bg-[#020612]" />
+
+        {/* High-Definition Earth Image with Smooth Slow Pan & Drift */}
         <div
+          className="absolute -inset-12 w-[110%] h-[110%] animate-cinematic-drift"
           style={{
-            transform: `translate3d(${mouseOffset.x * 0.5}px, ${mouseOffset.y * 0.5}px, 0)`
+            transform: `translate3d(${mouseOffset.x * 0.25}px, ${mouseOffset.y * 0.25}px, 0)`
           }}
-          className="absolute -inset-8 bg-[#020612] transition-transform duration-700 ease-out"
-        />
+        >
+          <img
+            src="/assets/earth_night_hd.jpg"
+            alt="Earth from space at night with city lights"
+            className={`w-full h-full object-cover object-bottom transition-opacity duration-1000 ease-out ${
+              isLoaded ? 'opacity-100' : 'opacity-0'
+            }`}
+          />
+        </div>
 
-        {/* High-Definition Static Earth Image */}
-        <img
-          src="/assets/earth_night_hd.jpg"
-          alt="Earth from space at night with city lights"
-          className={`w-full h-full object-cover object-bottom transition-all duration-1000 ease-out ${
-            isLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-102'
-          }`}
-          style={{
-            transform: `translate3d(${mouseOffset.x * 0.2}px, ${mouseOffset.y * 0.2}px, 0)`
-          }}
-        />
+        {/* Soft Blue Atmospheric Horizon Glow Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-transparent via-[#020612]/20 to-[#020612]/75 pointer-events-none" />
 
-        {/* Atmosphere Soft Horizon Glow Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-transparent via-[#020612]/30 to-[#020612]/80 pointer-events-none" />
-
-        {/* Subtle Radial Vignette */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_30%,rgba(2,6,18,0.75)_100%)] pointer-events-none" />
+        {/* Radial Vignette */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_35%,rgba(2,6,18,0.7)_100%)] pointer-events-none" />
       </div>
 
       {/* 2. TOP TELEMETRY BAR */}
@@ -112,11 +111,11 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onEnter }) => {
       {/* 3. CENTER HERO CONTENT */}
       <main
         style={{
-          transform: `translate3d(${mouseOffset.x * 0.8}px, ${mouseOffset.y * 0.8}px, 0)`
+          transform: `translate3d(${mouseOffset.x * 0.7}px, ${mouseOffset.y * 0.7}px, 0)`
         }}
         className="relative z-20 flex flex-col items-center text-center px-4 max-w-4xl mx-auto my-auto transition-transform duration-300 ease-out"
       >
-        {/* Title with smooth fade-in */}
+        {/* Title with smooth staggered fade-in */}
         <h1
           className={`text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-tight font-sans drop-shadow-[0_12px_40px_rgba(0,0,0,0.95)] transition-all duration-700 delay-150 ${
             isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'
@@ -132,7 +131,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onEnter }) => {
           </span>
         </h1>
 
-        {/* Luminous Horizon Accent Divider */}
+        {/* Luminous Horizon Accent Divider Line */}
         <div
           className={`w-56 sm:w-80 h-[1.5px] bg-gradient-to-r from-transparent via-cyan-400 to-transparent my-4 shadow-lg shadow-cyan-400/60 transition-all duration-700 delay-300 ${
             isLoaded ? 'opacity-100 scale-x-100' : 'opacity-0 scale-x-0'
@@ -156,9 +155,9 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onEnter }) => {
         >
           <button
             onClick={handleEnter}
-            className="group relative px-9 py-3.5 rounded-xl bg-[#0B132B]/90 hover:bg-[#121E3F] border border-cyan-400/60 hover:border-cyan-300 text-white font-bold text-sm tracking-wide shadow-[0_0_30px_rgba(0,180,255,0.35)] hover:shadow-[0_0_45px_rgba(0,210,255,0.65)] transition-all duration-300 hover:scale-105 active:scale-95 backdrop-blur-md flex items-center gap-3 overflow-hidden cursor-pointer"
+            className="group relative px-9 py-3.5 rounded-xl bg-[#0B132B]/90 hover:bg-[#121E3F] border border-cyan-400/60 hover:border-cyan-300 text-white font-bold text-sm tracking-wide btn-glow-pulse hover:shadow-[0_0_50px_rgba(0,210,255,0.7)] transition-all duration-300 hover:scale-105 active:scale-95 backdrop-blur-md flex items-center gap-3 overflow-hidden cursor-pointer"
           >
-            {/* Shimmer Ambient Light Sweep on Hover */}
+            {/* Shimmer Ambient Sweep on Hover */}
             <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
 
             <span className="relative z-10 font-sans">Enter Dashboard</span>
@@ -183,7 +182,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onEnter }) => {
         </div>
 
         <div className="hidden sm:flex items-center gap-4">
-          <span>Static HD Space Imagery</span>
+          <span>Real-time Space Telemetry Active</span>
           <span>•</span>
           <span>Model: Hybrid v1.0</span>
         </div>
