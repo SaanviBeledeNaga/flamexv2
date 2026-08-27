@@ -3,7 +3,10 @@ import pickle
 import numpy as np
 import pandas as pd
 from typing import Dict, Any, Tuple, Optional
-from sklearn.ensemble import RandomForestClassifier
+try:
+    from sklearn.ensemble import RandomForestClassifier
+except ImportError:
+    RandomForestClassifier = None
 from backend.app.ml.feature_engineering import FEATURE_NAMES, CLASS_NAMES
 
 MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "..", "models", "flamex_classifier.pkl")

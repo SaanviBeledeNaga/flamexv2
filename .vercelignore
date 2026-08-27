@@ -1,0 +1,10 @@
+# Exclude frontend assets and heavy node_modules from Python serverless function zip
+frontend/
+node_modules/
+.git/
+.github/
+.pytest_cache/
+reports/
+Dockerfile.*
+docker-compose.yml
+Makefile
