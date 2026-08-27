@@ -1,19 +1,21 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense, lazy } from 'react';
 import { SidebarNav } from './components/SidebarNav';
 import { TopKPIBar } from './components/TopKPIBar';
 import { FilterBar } from './components/FilterBar';
 import { MapView } from './components/MapView';
 import { EventDetailDrawer } from './components/EventDetailDrawer';
 import { AnalyticsPanel } from './components/AnalyticsPanel';
-import { AlertCenterModal } from './components/AlertCenterModal';
-import { FacilityIntelligenceView } from './components/FacilityIntelligenceView';
-import { PersistentSourcesView } from './components/PersistentSourcesView';
 import { AICopilotBar } from './components/AICopilotBar';
-import { Globe3DView } from './components/Globe3DView';
+
+const Globe3DView = lazy(() => import('./components/Globe3DView').then(m => ({ default: m.Globe3DView })));
+const FacilityIntelligenceView = lazy(() => import('./components/FacilityIntelligenceView').then(m => ({ default: m.FacilityIntelligenceView })));
+const PersistentSourcesView = lazy(() => import('./components/PersistentSourcesView').then(m => ({ default: m.PersistentSourcesView })));
+const AlertCenterModal = lazy(() => import('./components/AlertCenterModal').then(m => ({ default: m.AlertCenterModal })));
 
 import { ActiveTabType, FilterState, GeoJSONFeatureCollection, Alert, AnalyticsSummary } from './types';
 import { fetchMapEventsGeoJSON, fetchMapFacilitiesGeoJSON, fetchAlerts, acknowledgeAlert, fetchAnalyticsSummary } from './services/api';
 import { BarChart2, ShieldAlert, Sparkles, Flame, Eye } from 'lucide-react';
+
 
 const initialFilters: FilterState = {
   classification: 'all',
@@ -156,31 +158,37 @@ export const App: React.FC = () => {
 
         {/* PAGE VIEW 2: NATIVE IN-PLATFORM 3D GLOBE */}
         {activeNavTab === 'globe3d' && (
-          <Globe3DView
-            eventsGeoJSON={eventsGeoJSON}
-            facilitiesGeoJSON={facilitiesGeoJSON}
-            selectedEventId={selectedEventId}
-            onSelectEvent={(id) => {
-              setSelectedEventId(id);
-              setActiveNavTab('command');
-            }}
-          />
+          <Suspense fallback={<div className="flex-1 flex items-center justify-center text-gray-400 bg-[#0B0F19]">Loading 3D Globe...</div>}>
+            <Globe3DView
+              eventsGeoJSON={eventsGeoJSON}
+              facilitiesGeoJSON={facilitiesGeoJSON}
+              selectedEventId={selectedEventId}
+              onSelectEvent={(id) => {
+                setSelectedEventId(id);
+                setActiveNavTab('command');
+              }}
+            />
+          </Suspense>
         )}
 
         {/* PAGE VIEW 2: FACILITY INTELLIGENCE */}
         {activeNavTab === 'facility' && (
-          <FacilityIntelligenceView onSelectEvent={(id) => {
-            setSelectedEventId(id);
-            setActiveNavTab('command');
-          }} />
+          <Suspense fallback={<div className="flex-1 flex items-center justify-center text-gray-400 bg-[#0B0F19]">Loading Facility Intelligence...</div>}>
+            <FacilityIntelligenceView onSelectEvent={(id) => {
+              setSelectedEventId(id);
+              setActiveNavTab('command');
+            }} />
+          </Suspense>
         )}
 
         {/* PAGE VIEW 3: PERSISTENT SOURCES TABLE */}
         {activeNavTab === 'persistent' && (
-          <PersistentSourcesView onSelectEvent={(id) => {
-            setSelectedEventId(id);
-            setActiveNavTab('command');
-          }} />
+          <Suspense fallback={<div className="flex-1 flex items-center justify-center text-gray-400 bg-[#0B0F19]">Loading Persistent Sources...</div>}>
+            <PersistentSourcesView onSelectEvent={(id) => {
+              setSelectedEventId(id);
+              setActiveNavTab('command');
+            }} />
+          </Suspense>
         )}
 
         {/* PAGE VIEW 4: ANALYTICS DASHBOARD */}
@@ -202,16 +210,19 @@ export const App: React.FC = () => {
       </div>
 
       {/* Alert Center Modal */}
-      <AlertCenterModal
-        isOpen={isAlertModalOpen}
-        onClose={() => setIsAlertModalOpen(false)}
-        alerts={alerts}
-        onAcknowledgeAlert={handleAcknowledgeAlert}
-        onSelectEvent={(id) => {
-          setSelectedEventId(id);
-          setActiveNavTab('command');
-        }}
-      />
+      <Suspense fallback={null}>
+        <AlertCenterModal
+          isOpen={isAlertModalOpen}
+          onClose={() => setIsAlertModalOpen(false)}
+          alerts={alerts}
+          onAcknowledgeAlert={handleAcknowledgeAlert}
+          onSelectEvent={(id) => {
+            setSelectedEventId(id);
+            setActiveNavTab('command');
+          }}
+        />
+      </Suspense>
+
     </div>
   );
 };
