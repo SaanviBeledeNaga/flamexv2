@@ -59,6 +59,7 @@ export const MapView: React.FC<MapViewProps> = ({
   const [showAnomalies, setShowAnomalies] = useState(true);
   const [showFacilities, setShowFacilities] = useState(true);
   const [showHeatmap, setShowHeatmap] = useState(false);
+  const [timelinePeriod, setTimelinePeriod] = useState<'live' | '6h' | '12h' | '24h' | '7d'>('live');
 
   const defaultCenter: [number, number] = [17.45, 78.52];
   const defaultZoom = 11;
@@ -78,61 +79,53 @@ export const MapView: React.FC<MapViewProps> = ({
   };
 
   return (
-    <div className="relative w-full h-full bg-[#0B0F19]">
+    <div className="relative w-full h-full bg-[#0B0F19] select-none">
       {/* Map Control Bar (Layers & Styles) */}
-      <div className="absolute top-4 right-4 z-[1000] flex flex-col gap-2 bg-[#111827]/95 backdrop-blur-md border border-gray-800 p-2.5 rounded-xl shadow-2xl text-xs">
+      <div className="absolute top-4 right-4 z-[1000] flex flex-col gap-2 bg-[#0B0F19]/95 backdrop-blur-md border border-gray-800 p-3 rounded-2xl shadow-2xl text-xs">
         {/* Style Switcher */}
-        <div className="flex items-center gap-1 bg-gray-900 p-1 rounded-lg border border-gray-800">
+        <div className="flex items-center gap-1 bg-gray-900 p-1 rounded-xl border border-gray-800">
           <button
             onClick={() => setTileStyle('dark')}
-            className={`px-2 py-1 rounded text-[11px] font-semibold transition ${
+            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition ${
               tileStyle === 'dark' ? 'bg-orange-500 text-white shadow-md' : 'text-gray-400 hover:text-gray-200'
             }`}
           >
-            Dark Map
-          </button>
-          <button
-            onClick={() => setTileStyle('google_sat')}
-            className={`px-2 py-1 rounded text-[11px] font-semibold transition ${
-              tileStyle === 'google_sat' ? 'bg-orange-500 text-white shadow-md' : 'text-gray-400 hover:text-gray-200'
-            }`}
-          >
-            🌎 Google Earth Sat
+            Dark GIS
           </button>
           <button
             onClick={() => setTileStyle('google_hybrid')}
-            className={`px-2 py-1 rounded text-[11px] font-semibold transition ${
+            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition ${
               tileStyle === 'google_hybrid' ? 'bg-orange-500 text-white shadow-md' : 'text-gray-400 hover:text-gray-200'
             }`}
           >
-            🌎 Google Earth Hybrid
+            🌎 Satellite
           </button>
           <button
             onClick={() => setTileStyle('google_terrain')}
-            className={`px-2 py-1 rounded text-[11px] font-semibold transition ${
+            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition ${
               tileStyle === 'google_terrain' ? 'bg-orange-500 text-white shadow-md' : 'text-gray-400 hover:text-gray-200'
             }`}
           >
-            ⛰️ Google Terrain
+            ⛰️ Terrain
           </button>
         </div>
 
         {/* 3D Google Earth Button */}
         <button
           onClick={handleOpenGoogleEarth3D}
-          className="w-full py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold rounded-lg transition text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-blue-500/20"
+          className="w-full py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold rounded-xl transition text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-blue-500/20"
         >
-          <span>🌎 Open Google Earth 3D Globe</span>
+          <span>🌎 Open Google Earth 3D</span>
         </button>
 
         {/* Layer Checkboxes */}
         <div className="space-y-1.5 pt-1 text-gray-300">
           <div className="text-[10px] font-bold uppercase tracking-wider text-gray-500 flex items-center gap-1">
             <Layers className="w-3 h-3 text-orange-500" />
-            <span>Map Layers</span>
+            <span>Map Overlays</span>
           </div>
 
-          <label className="flex items-center gap-2 cursor-pointer text-[11px] hover:text-white">
+          <label className="flex items-center gap-2 cursor-pointer text-[11px] hover:text-white font-medium">
             <input
               type="checkbox"
               checked={showAnomalies}
@@ -142,7 +135,7 @@ export const MapView: React.FC<MapViewProps> = ({
             <span>🔥 Thermal Anomalies</span>
           </label>
 
-          <label className="flex items-center gap-2 cursor-pointer text-[11px] hover:text-white">
+          <label className="flex items-center gap-2 cursor-pointer text-[11px] hover:text-white font-medium">
             <input
               type="checkbox"
               checked={showFacilities}
@@ -152,7 +145,7 @@ export const MapView: React.FC<MapViewProps> = ({
             <span>🏭 Industrial Facilities</span>
           </label>
 
-          <label className="flex items-center gap-2 cursor-pointer text-[11px] hover:text-white">
+          <label className="flex items-center gap-2 cursor-pointer text-[11px] hover:text-white font-medium">
             <input
               type="checkbox"
               checked={showHeatmap}
@@ -162,6 +155,26 @@ export const MapView: React.FC<MapViewProps> = ({
             <span>🌡️ Thermal Risk Heatmap</span>
           </label>
         </div>
+      </div>
+
+      {/* Timeline Scrubber Slider (Bottom Left) */}
+      <div className="absolute bottom-4 right-4 z-[1000] hidden sm:flex items-center gap-2 bg-[#0B0F19]/95 backdrop-blur-md border border-gray-800 p-2 rounded-2xl shadow-2xl text-xs">
+        <div className="flex items-center gap-1.5 text-gray-400 font-bold uppercase text-[10px] px-1">
+          <span>Timeline:</span>
+        </div>
+        {(['live', '6h', '12h', '24h', '7d'] as const).map((period) => (
+          <button
+            key={period}
+            onClick={() => setTimelinePeriod(period)}
+            className={`px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold transition uppercase ${
+              timelinePeriod === period
+                ? 'bg-orange-500 text-white shadow-md'
+                : 'text-gray-400 hover:text-white hover:bg-gray-800'
+            }`}
+          >
+            {period === 'live' ? '● LIVE' : period}
+          </button>
+        ))}
       </div>
 
       <MapContainer

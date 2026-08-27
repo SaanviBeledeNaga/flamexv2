@@ -14,15 +14,14 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
   unacknowledgedAlertCount
 }) => {
   const navItems = [
-    { id: 'command',      label: 'Command Center',   icon: Flame,     badge: 'GIS' },
-    { id: 'globe3d',      label: '3D Globe',          icon: Globe2,    badge: '3D' },
-    { id: 'facility',     label: 'Facilities',        icon: Factory },
-    { id: 'persistent',   label: 'Persistent Sources',icon: Database },
-    { id: 'alerts',       label: 'Alert Center',      icon: ShieldAlert, alertBadge: unacknowledgedAlertCount },
+    { id: 'command',      label: 'Dashboard',         icon: Flame,        badge: 'GIS' },
+    { id: 'facility',     label: 'Industrial Fires',  icon: Factory,      badge: 'PROX' },
+    { id: 'persistent',   label: 'Persistent Sources',icon: Database,     badge: '30d' },
+    { id: 'globe3d',      label: '3D Globe',          icon: Globe2,       badge: '3D' },
+    { id: 'alerts',       label: 'Alert Center',      icon: ShieldAlert,  alertBadge: unacknowledgedAlertCount },
     { id: 'analytics',    label: 'Analytics',         icon: BarChart2 },
-    { id: 'ai-assistant', label: 'AI Assistant',      icon: Sparkles,  badge: 'AI' },
-    { id: 'data-sources', label: 'Data Sources',      icon: Wifi },
-    { id: 'model',        label: 'AI Model',          icon: Brain },
+    { id: 'ai-assistant', label: 'AI Assistant',      icon: Sparkles,     badge: 'AI' },
+    { id: 'data-sources', label: 'Data & Model',      icon: Wifi },
   ];
 
   return (

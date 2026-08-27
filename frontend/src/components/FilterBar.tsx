@@ -1,5 +1,5 @@
 import React from 'react';
-import { Filter, RotateCcw, AlertTriangle, Factory, Flame, Layers } from 'lucide-react';
+import { Filter, RotateCcw, AlertTriangle, Factory, Flame, Clock, ShieldAlert, Sparkles } from 'lucide-react';
 import { FilterState } from '../types';
 
 interface FilterBarProps {
@@ -20,90 +20,88 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   };
 
   return (
-    <div className="h-12 bg-[#0B0F19] border-b border-gray-800 px-6 flex items-center justify-between shrink-0 text-xs gap-4 overflow-x-auto">
-      <div className="flex items-center gap-3 shrink-0">
-        <div className="flex items-center gap-1.5 text-gray-400 font-semibold uppercase tracking-wider text-[11px]">
+    <div className="h-12 bg-[#0B0F19] border-b border-gray-800 px-4 md:px-6 flex items-center justify-between shrink-0 text-xs gap-3 overflow-x-auto select-none">
+      <div className="flex items-center gap-2.5 shrink-0">
+        <div className="flex items-center gap-1.5 text-gray-400 font-bold uppercase tracking-wider text-[10px]">
           <Filter className="w-3.5 h-3.5 text-orange-500" />
           <span>Filters:</span>
         </div>
 
-        {/* Classification Filter */}
+        {/* Classification Filter (SIH Aligned) */}
         <select
           value={filters.classification}
           onChange={(e) => updateField('classification', e.target.value)}
-          className="bg-gray-900 border border-gray-700 text-gray-200 rounded-md px-2.5 py-1 focus:outline-none focus:border-orange-500 font-medium"
+          className="bg-gray-900 border border-gray-700 text-gray-200 rounded-lg px-2.5 py-1 focus:outline-none focus:border-orange-500 font-semibold"
         >
-          <option value="all">All Classifications</option>
-          <option value="industrial_fire">🔥 Industrial Fire</option>
-          <option value="gas_flare">🏭 Persistent Gas Flare</option>
-          <option value="forest_fire">🌲 Wildfire / Forest Fire</option>
-          <option value="agricultural_burn">🌾 Agricultural Burn</option>
-          <option value="mining_activity">⛏️ Mining Activity</option>
-          <option value="unknown">❓ Unknown Anomaly</option>
+          <option value="all">🔥 All Thermal Events</option>
+          <option value="industrial_fire">🔴 Industrial Fires</option>
+          <option value="gas_flare">🟠 Persistent Sources (Gas Flares)</option>
+          <option value="forest_fire">🟢 Natural Fires (Wildfires)</option>
+          <option value="agricultural_burn">🟢 Agricultural Crop Burns</option>
+          <option value="mining_activity">⛏️ Mining Thermal Activity</option>
+          <option value="unknown">⚪ Abnormal / Uncertain</option>
         </select>
 
-        {/* Severity Filter */}
+        {/* Severity Level Filter */}
         <select
           value={filters.severity}
           onChange={(e) => updateField('severity', e.target.value)}
-          className="bg-gray-900 border border-gray-700 text-gray-200 rounded-md px-2.5 py-1 focus:outline-none focus:border-orange-500 font-medium"
+          className="bg-gray-900 border border-gray-700 text-gray-200 rounded-lg px-2.5 py-1 focus:outline-none focus:border-orange-500 font-semibold"
         >
-          <option value="all">All Risk Severities</option>
-          <option value="HIGH">🚨 High Risk</option>
+          <option value="all">All Risk Levels</option>
+          <option value="HIGH">🚨 High Risk (Critical)</option>
           <option value="MEDIUM">⚠️ Medium Risk</option>
           <option value="LOW">🟢 Low Risk</option>
         </select>
 
-        {/* Facility Type Filter */}
+        {/* Facility Context Filter */}
         <select
           value={filters.facility_type}
           onChange={(e) => updateField('facility_type', e.target.value)}
-          className="bg-gray-900 border border-gray-700 text-gray-200 rounded-md px-2.5 py-1 focus:outline-none focus:border-orange-500 font-medium"
+          className="bg-gray-900 border border-gray-700 text-gray-200 rounded-lg px-2.5 py-1 focus:outline-none focus:border-orange-500 font-semibold hidden lg:block"
         >
-          <option value="all">All Facility Types</option>
-          <option value="refinery">Oil Refinery</option>
-          <option value="petrochemical">Petrochemical Works</option>
-          <option value="power_plant">Thermal Power Plant</option>
-          <option value="steel">Steel Smelter</option>
-          <option value="mining">Mining & Quarry</option>
-          <option value="lng">LNG Terminal</option>
-          <option value="manufacturing">Manufacturing</option>
+          <option value="all">All Industrial Facilities</option>
+          <option value="refinery">Oil Refineries</option>
+          <option value="petrochemical">Petrochemical Complexes</option>
+          <option value="power_plant">Thermal Power Plants</option>
+          <option value="steel">Steel Smelters</option>
+          <option value="mining">Mining Zones</option>
+          <option value="lng">LNG Gas Terminals</option>
         </select>
 
-        {/* Persistent Toggle */}
+        {/* Quick SIH Goal Toggles */}
         <button
           onClick={() => updateField('is_persistent', filters.is_persistent === true ? null : true)}
-          className={`px-2.5 py-1 rounded-md border font-medium transition ${
+          className={`px-2.5 py-1 rounded-lg border font-semibold transition text-[11px] flex items-center gap-1 ${
             filters.is_persistent === true
-              ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+              ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-sm'
               : 'bg-gray-900 text-gray-400 border-gray-800 hover:border-gray-700'
           }`}
         >
-          Persistent Flares
+          <span>🟠 Persistent (30d)</span>
         </button>
 
-        {/* Abnormal Toggle */}
         <button
           onClick={() => updateField('is_abnormal', filters.is_abnormal === true ? null : true)}
-          className={`px-2.5 py-1 rounded-md border font-medium transition ${
+          className={`px-2.5 py-1 rounded-lg border font-semibold transition text-[11px] flex items-center gap-1 ${
             filters.is_abnormal === true
-              ? 'bg-red-500/20 text-red-300 border-red-500/40'
+              ? 'bg-red-500/20 text-red-300 border-red-500/50 shadow-sm'
               : 'bg-gray-900 text-gray-400 border-gray-800 hover:border-gray-700'
           }`}
         >
-          ⚡ Abnormal Surges
+          <span>⚡ Abnormal Surges</span>
         </button>
       </div>
 
       {/* Right Stats & Reset */}
-      <div className="flex items-center gap-4 shrink-0">
+      <div className="flex items-center gap-3 shrink-0">
         <span className="text-gray-400 font-mono text-[11px]">
-          Showing <strong className="text-white font-bold">{totalFilteredCount}</strong> thermal anomalies
+          Showing <strong className="text-white font-bold">{totalFilteredCount}</strong> detections
         </span>
 
         <button
           onClick={onResetFilters}
-          className="flex items-center gap-1 text-gray-400 hover:text-white transition text-xs"
+          className="flex items-center gap-1 text-gray-400 hover:text-white transition text-xs font-semibold px-2 py-1 rounded hover:bg-gray-800"
           title="Reset all filters"
         >
           <RotateCcw className="w-3.5 h-3.5" />
@@ -113,3 +111,4 @@ export const FilterBar: React.FC<FilterBarProps> = ({
     </div>
   );
 };
+
