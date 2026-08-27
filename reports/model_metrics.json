@@ -1,0 +1,106 @@
+{
+  "model_version": "v1.0.0-hybrid",
+  "dataset": "Synthetic Ground Truth Benchmark (600 samples)",
+  "accuracy": 1.0,
+  "industrial_fire_metrics": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1_score": 1.0
+  },
+  "per_class_metrics": {
+    "industrial_fire": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0,
+      "support": 100
+    },
+    "gas_flare": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0,
+      "support": 100
+    },
+    "forest_fire": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0,
+      "support": 100
+    },
+    "agricultural_burn": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0,
+      "support": 100
+    },
+    "mining_activity": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0,
+      "support": 100
+    },
+    "unknown": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0,
+      "support": 100
+    }
+  },
+  "confusion_matrix": [
+    [
+      100,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      100,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      100,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      100,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      100,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      100
+    ]
+  ],
+  "classes": [
+    "industrial_fire",
+    "gas_flare",
+    "forest_fire",
+    "agricultural_burn",
+    "mining_activity",
+    "unknown"
+  ]
+}

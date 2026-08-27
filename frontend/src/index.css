@@ -1,0 +1,81 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* Custom scrollbars for high-density dashboard */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0B0F19;
+}
+::-webkit-scrollbar-thumb {
+  background: #1F2937;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #374151;
+}
+
+/* Leaflet dark theme map customization */
+.leaflet-container {
+  background-color: #0B0F19 !important;
+  font-family: inherit;
+}
+.leaflet-popup-content-wrapper {
+  background: #111827 !important;
+  color: #F3F4F6 !important;
+  border: 1px solid #374151;
+  border-radius: 0.5rem;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+}
+.leaflet-popup-tip {
+  background: #111827 !important;
+}
+
+/* Marker pulse animations */
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.4);
+    opacity: 0.3;
+  }
+  100% {
+    transform: scale(0.8);
+    opacity: 0.8;
+  }
+}
+
+.pulse-high-risk {
+  animation: pulse-ring 2s infinite ease-in-out;
+}
+
+/* Recharts Dark Theme Tooltip Customization */
+.recharts-default-tooltip {
+  background-color: #111827 !important;
+  border-color: #374151 !important;
+  border-radius: 0.5rem !important;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5) !important;
+  color: #F3F4F6 !important;
+}
+.recharts-tooltip-item {
+  color: #F3F4F6 !important;
+}
+.recharts-tooltip-item-name,
+.recharts-tooltip-item-value,
+.recharts-tooltip-item-separator {
+  color: #F3F4F6 !important;
+}
+.recharts-tooltip-label {
+  color: #9CA3AF !important;
+  font-weight: 600;
+}
+
